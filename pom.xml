@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.UnkLegacy</groupId>
+    <artifactId>FizzBuzz</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+
+    <properties>
+        <maven.build.helper.version>3.3.0</maven.build.helper.version>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.version>3.10.1</maven.compiler.version>
+        <maven.dependency.version>3.3.0</maven.dependency.version>
+        <maven.flatten.version>1.2.7</maven.flatten.version>
+        <maven.source.version>3.2.1</maven.source.version>
+        <maven.surefire.version>3.0.0-M6</maven.surefire.version>
+        <maven.versions.version>2.10.0</maven.versions.version>
+        <version.version>1.0.0</version.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <!-- BUILD plugins section-->
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>versions-maven-plugin</artifactId>
+                    <version>${maven.versions.version}</version>
+                    <configuration>
+                        <!-- Don't update below properties (comma separated)-->
+                        <excludeProperties>
+                            jetty.version,tomcat.jasper.version,dataservices.version
+                        </excludeProperties>
+                        <!-- Properties are required for a repo if there are multiple artifacts using same version
+                             Providing one dependency helps version plugin resolve the common latest version between all the artifacts-->
+                        <!--suppress UnresolvedMavenProperty -->
+                        <rulesUri>file:///${session.executionRootDirectory}/rules.xml</rulesUri>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>update-dependencies-latest</id>
+                            <phase>validate</phase>
+                            <goals>
+                                <goal>display-dependency-updates</goal>
+                                <goal>display-plugin-updates</goal>
+                                <goal>use-latest-versions</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <!-- Run mvn versions:update-properties@update-properties-latest -->
+                            <id>update-properties-latest</id>
+                            <phase>validate</phase>
+                            <goals>
+                                <goal>update-properties</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven.compiler.version}</version>
+                    <configuration>
+                        <source>${maven.compiler.source}</source>
+                        <target>${maven.compiler.target}</target>
+                    </configuration>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${maven.surefire.version}</version>
+                    <!-- ADD whatever test configuration needed below -->
+                    <!--<configuration>
+                        <skipTests>false</skipTests>
+                    </configuration>-->
+                </plugin>
+
+
+                <!-- required from mvn deploy -Drevision= to work properly, otherwise github packages grabs ${revision} as-is -->
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>flatten-maven-plugin</artifactId>
+                    <version>${maven.flatten.version}</version>
+                    <configuration>
+                        <updatePomFile>true</updatePomFile>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>flatten</id>
+                            <phase>process-resources</phase>
+                            <goals>
+                                <goal>flatten</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>flatten.clean</id>
+                            <phase>clean</phase>
+                            <goals>
+                                <goal>clean</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>build-helper-maven-plugin</artifactId>
+                    <version>${maven.build.helper.version}</version>
+                    <configuration>
+                        <versionString>${version.version}</versionString>
+                        <name/>
+                        <fileSet/>
+                        <regex/>
+                        <value/>
+                        <source/>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+</project>
