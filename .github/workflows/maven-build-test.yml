@@ -1,0 +1,115 @@
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: Debug for Feature branch
+on:
+  workflow_dispatch:
+    branches:
+      - feature/**
+  push:
+    branches:
+      - feature/**
+
+jobs:
+  validate_name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: get jira name
+        id: branch
+        run: |
+          if [[ ${GITHUB_REF#refs/heads/} == @(develop|main) ]]; then
+           echo ::set-output name=jira::$(echo ${GITHUB_REF} |cut -d'/' -f3 | cut -d '-' -f1,2)  
+          else
+           echo ::set-output name=jira::$(echo ${GITHUB_REF} |cut -d'/' -f4 | cut -d '-' -f1,2)
+          fi
+      - name: jira Name from upper case to lower case
+        id: string
+        uses: ASzc/change-string-case-action@v1
+        with:
+          string: ${{ steps.branch.outputs.jira }}
+    outputs:
+      jira_name: ${{ steps.string.outputs.lowercase }}
+
+  Build_Bridge:
+    needs: validate_name
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['windows']
+        jdk: [ '1.8' ]
+
+    defaults:
+      run:
+        shell: pwsh
+
+    outputs:
+      version-tag: ${{ steps.vars.outputs.version-tag }}
+      version: ${{ steps.vars1.outputs.version }}
+
+    steps:
+      - name: Clone the source code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK ${{ matrix.jdk }}
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.jdk }}
+
+      - name: Set up cache for ~./m2/repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-${{ matrix.os }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-${{ matrix.os }}-
+
+      - name: update API version
+        run: |
+          mvn versions:update-properties@update-properties-latest -U
+          $POM_CHANGED=git status --porcelain
+          echo "Changes are-------------------" $POM_CHANGED
+          if ( $POM_CHANGED -like '*pom.xml*' )
+          {
+            echo "Committing pom.xml changes"
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git add ./pom.xml
+            git commit -m 'POM versions changed'
+            git pull
+            git push
+          }
+
+      - name: Get latest tag
+        id: vars
+        run: |
+          $TAG=git describe --tags --abbrev=0
+          echo "::set-output name=version-tag::$TAG"
+
+      # Get next semantic build tag number
+      - name: Get version
+        id: vars1
+        run: |
+          $MAJOR=mvn build-helper:parse-version -D"version.version"=${{ steps.vars.outputs.version-tag }} help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
+          $MINOR=mvn build-helper:parse-version -D"version.version"=${{ steps.vars.outputs.version-tag }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
+          $INCREMENT=mvn build-helper:parse-version -D"version.version"=${{ steps.vars.outputs.version-tag }} help:evaluate -Dexpression="parsedVersion.nextIncrementalVersion" -q -DforceStdout
+          $NEXT_SEMANTIC_TAG=$MAJOR+'.'+$MINOR+'.'+$INCREMENT
+          echo "::set-output name=version::$NEXT_SEMANTIC_TAG"
+
+      - name: Build with Maven - feature branch
+        run: |
+          echo "version on feature branch will be ${{ steps.vars1.outputs.version }}-f${{github.run_number}}"
+          echo "tag is ${{ steps.vars.outputs.version-tag}}"
+          mvn versions:set -DnewVersion="${{ steps.vars1.outputs.version }}-f${{github.run_number}}"
+          mvn --batch-mode clean install
+
+      - name: Tag the code on a feature branch
+        id: tag_version_feature
+        uses: mathieudutour/github-tag-action@v5.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          custom_tag: ${{ steps.vars1.outputs.version }}-f${{github.run_number}}
+          tag_prefix: ''

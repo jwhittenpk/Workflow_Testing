@@ -1,0 +1,174 @@
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: Build for Develop/Support/Hotfix branch
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - develop
+      - support/**
+      - hotfix/**
+  pull_request:
+    branches:
+      - develop
+      - support/**
+      - hotfix/**
+    types: [ closed ]
+
+jobs:
+  validate_name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: get jira name
+        id: branch
+        run: |
+          if [[ ${GITHUB_REF#refs/heads/} == @(develop|master) ]]; then
+           echo ::set-output name=jira::$(echo ${GITHUB_REF} |cut -d'/' -f3 | cut -d '-' -f1,2)  
+          else
+           echo ::set-output name=jira::$(echo ${GITHUB_REF} |cut -d'/' -f4 | cut -d '-' -f1,2)
+          fi
+      - name: jira Name from upper case to lower case
+        id: string
+        uses: ASzc/change-string-case-action@v1
+        with:
+          string: ${{ steps.branch.outputs.jira }}
+    outputs:
+      jira_name: ${{ steps.string.outputs.lowercase }}
+
+  Build_FizzBuzz:
+    needs: validate_name
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['windows']
+        jdk: [ '1.8' ]
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Clone the source code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK ${{ matrix.jdk }}
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.jdk }}
+
+      - name: Set up cache for ~./m2/repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-${{ matrix.os }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-${{ matrix.os }}-
+
+      - name: update API version
+        run: |
+          mvn versions:update-properties@update-properties-latest -U
+          $POM_CHANGED=git status --porcelain
+          echo "Changes are-------------------" $POM_CHANGED
+          if ( $POM_CHANGED -like '*pom.xml*' )
+          {
+            echo "Commiting pom.xml changes"
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git add ./pom.xml
+            git commit -m 'POM versions changed'
+            git pull
+            git push
+          }
+
+      - name: Get latest tag
+        id: vars
+        run: |
+          $TAG=git describe --tags --abbrev=0
+          echo "::set-output name=version-tag::$TAG"
+
+      # Get next semantic build tag number
+      - name: Get version
+        id: vars1
+        run: |
+          $MAJOR=mvn build-helper:parse-version -D"version.version"=${{ steps.vars.outputs.version-tag }} help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
+          $MINOR=mvn build-helper:parse-version -D"version.version"=${{ steps.vars.outputs.version-tag }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
+          $INCREMENT=mvn build-helper:parse-version -D"version.version"=${{ steps.vars.outputs.version-tag }} help:evaluate -Dexpression="parsedVersion.nextIncrementalVersion" -q -DforceStdout
+          $NEXT_SEMANTIC_TAG=$MAJOR+'.'+$MINOR+'.'+$INCREMENT
+          echo "::set-output name=version::$NEXT_SEMANTIC_TAG"
+
+      # Get the current semantic build tag for the branch i.e excluding '-s' or '-d'
+      - name: Get current build number
+        id: vars2
+        run: |
+          $MAJOR=mvn build-helper:parse-version -D"version.version"=${{ steps.vars.outputs.version-tag }} help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
+          $MINOR=mvn build-helper:parse-version -D"version.version"=${{ steps.vars.outputs.version-tag }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
+          $BUILDNUMBER=mvn build-helper:parse-version -D"version.version"=${{ steps.vars.outputs.version-tag }} help:evaluate -Dexpression="parsedVersion.incrementalVersion" -q -DforceStdout
+          $CURRENT_VERSION=$MAJOR+'.'+$MINOR+'.'+$BUILDNUMBER
+          echo "::set-output name=currentVersion::$CURRENT_VERSION"
+
+      # Print the branch names which is worked on
+      - name: print branch names
+        run: |
+          echo "Branch name is: ${{ github.base_ref }}"
+          echo "HEAD branch is: ${{ github.head_ref }}"
+
+      # Build and tag develop branch with '-d'
+      - name: Build with Maven - develop branch
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.base_ref == 'develop' && startsWith(github.head_ref, 'feature/') }}
+        run: |
+          echo "version on develop branch will be  ${{ steps.vars2.outputs.currentVersion }}-d${{github.run_number}}"
+          echo "tag is ${{ steps.vars.outputs.version-tag}}"
+          mvn versions:set -DnewVersion="${{ steps.vars2.outputs.currentVersion }}-d${{github.run_number}}"
+          mvn --batch-mode clean install
+
+      - name: Tag the code on a develop branch
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.merged == true  && github.base_ref == 'develop' && startsWith(github.head_ref, 'feature/') }}
+        id: tag_version_develop
+        uses: mathieudutour/github-tag-action@v5.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          custom_tag: ${{ steps.vars2.outputs.currentVersion }}-d${{github.run_number}}
+          tag_prefix: ''
+
+      # Build and tag support branch with '-s'
+      - name: Build with Maven - support branch
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.merged == true  && startsWith(github.base_ref, 'support/') && startsWith(github.head_ref, 'feature/') }}
+        run: |
+          echo "version on support/feature branch will be ${{ steps.vars2.outputs.currentVersion }}-s${{github.run_number}}"
+          echo "tag is ${{ steps.vars.outputs.version-tag}}"
+          mvn versions:set -DnewVersion="${{ steps.vars2.outputs.currentVersion }}-s${{github.run_number}}"
+          mvn --batch-mode clean install
+
+      - name: Tag the code on a support branch
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.merged == true  && startsWith(github.base_ref, 'support/') && startsWith(github.head_ref, 'feature/') }}
+        id: tag_version_support
+        uses: mathieudutour/github-tag-action@v5.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          custom_tag: ${{ steps.vars2.outputs.currentVersion }}-s${{github.run_number}}
+          tag_prefix: ''
+
+      # Build and tag hotfix branch with '-h'
+      - name: Build with Maven - hotfix branch
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.merged == true  && startsWith(github.base_ref, 'hotfix/') && startsWith(github.head_ref, 'feature/') }}
+        run: |
+          echo "version on hotfix/feature branch will be ${{ steps.vars2.outputs.currentVersion }}-h${{github.run_number}}"
+          echo "tag is ${{ steps.vars.outputs.version-tag}}"
+          mvn versions:set -DnewVersion="${{ steps.vars2.outputs.currentVersion }}-h${{github.run_number}}"
+          mvn --batch-mode clean install
+
+      - name: Tag the code on a hotfix branch
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.merged == true  && startsWith(github.base_ref, 'hotfix/') && startsWith(github.head_ref, 'feature/') }}
+        id: tag_version_hotfix
+        uses: mathieudutour/github-tag-action@v5.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          custom_tag: ${{ steps.vars2.outputs.currentVersion }}-h${{github.run_number}}
+          tag_prefix: ''
