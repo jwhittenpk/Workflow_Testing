@@ -63,7 +63,7 @@ jobs:
           $NEXT_MINOR=mvn build-helper:parse-version -D"version.version"=$DEVELOP_TAG help:evaluate -Dexpression="parsedVersion.nextMinorVersion" -q -DforceStdout
           $QUALIFIER=mvn build-helper:parse-version -D"version.version"=$DEVELOP_TAG help:evaluate -Dexpression="parsedVersion.qualifier" -q -DforceStdout
           $NEXT_MASTER_VERSION=$MAJOR+'.'+$MINOR+'.0'
-          $NEXT_DEVELOP_VERSION=$MAJOR+'.'+$NEXT_MINOR+'.0'+$QUALIFIER
+          $NEXT_DEVELOP_VERSION=$MAJOR+'.'+$NEXT_MINOR+'.0-'+$QUALIFIER
           echo "DEVELOP_TAG = $DEVELOP_TAG"
           echo "QUALIFIER = $QUALIFIER"
           echo "NEXT_MASTER_VERSION = $NEXT_MASTER_VERSION"
