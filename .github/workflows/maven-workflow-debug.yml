@@ -43,53 +43,47 @@ jobs:
           restore-keys: |
             maven-${{ matrix.os }}-
 
-      # Get the Develop tag for next_version calculations
-      - name: Get Develop version tag being merged into Master
-        id: get_develop_version
+      # $DEVELOP_TAG is Develop build being merged into Master.
+      # $QUALIFIER is the build information from Develop, eg. eg, "1.0.245-d20220513_1553.abcdef" should return "d20220513_1553.abcdef"
+      # $NEXT_MASTER_VERSION should be $DEVELOP_TAG without the $QUALIFIER.
+      # $NEXT_DEVELOP_VERSION should be one ahead of $NEXT_MASTER_VERSION.
+      # eg, if $NEXT_MASTER_VERSION is 1.2.0, $NEXT_DEVELOP_VERSION should be 1.3.0-$QUALIFIER
+      - name: Calculate next Master and Develop Versions
+        id: calculate_next_versions
         run: |
           $DEVELOP_TAG=git describe --tags --abbrev=0 "origin/develop"
-          echo "DEVELOP_TAG = $DEVELOP_TAG"
-          echo "::set-output name=develop-version-tag::$DEVELOP_TAG"
-
-      # Get the Develop qualifier so we can bump the Develop version later
-      # eg, 1.0.245-d20220513_1553.abcdef should return d20220513_1553.abcdef
-      - name: Get Develop qualifier tag
-        id: get_develop_qualifier
-        run: |
-          $DEVELOP_TAG="${{ steps.get_develop_version.outputs.develop-version-tag }}"
+          $MAJOR=mvn build-helper:parse-version -D"version.version"=$DEVELOP_TAG help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
+          $MINOR=mvn build-helper:parse-version -D"version.version"=$DEVELOP_TAG help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
+          $NEXT_MINOR=mvn build-helper:parse-version -D"version.version"=$DEVELOP_TAG help:evaluate -Dexpression="parsedVersion.nextMinorVersion" -q -DforceStdout
           $QUALIFIER=mvn build-helper:parse-version -D"version.version"=$DEVELOP_TAG help:evaluate -Dexpression="parsedVersion.qualifier" -q -DforceStdout
+          $NEXT_MASTER_VERSION=$MAJOR+'.'+$MINOR+'.0'
+          $NEXT_DEVELOP_VERSION=$MAJOR+'.'+$NEXT_MINOR+'.0'+$QUALIFIER
+          echo "DEVELOP_TAG = $DEVELOP_TAG"
           echo "QUALIFIER = $QUALIFIER"
-          echo "::set-output name=develop-qualifier-tag::$QUALIFIER"
-
-      # Get next semantic build tag number
-      - name: Get next Master version
-        id: get_next_master_version
-        run: |
-          $MASTER_TAG=git describe --tags --abbrev=0
-          $MAJOR=mvn build-helper:parse-version -D"version.version"=$MASTER_TAG help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
-          $NEXT_MINOR=mvn build-helper:parse-version -D"version.version"=$MASTER_TAG help:evaluate -Dexpression="parsedVersion.nextMinorVersion" -q -DforceStdout
-          $NEXT_MASTER_VERSION=$MAJOR+'.'+$NEXT_MINOR+'.0'
           echo "NEXT_MASTER_VERSION = $NEXT_MASTER_VERSION"
+          echo "NEXT_DEVELOP_VERSION = $NEXT_DEVELOP_VERSION"
+          echo "::set-output name=develop-version-tag::$DEVELOP_TAG"
+          echo "::set-output name=develop-qualifier-tag::$QUALIFIER"
           echo "::set-output name=next-master-version-tag::$NEXT_MASTER_VERSION"
+          echo "::set-output name=next-develop-version-tag::$NEXT_DEVELOP_VERSION"    
 
       # Display the version numbers for both Master and the Develop build being merged into Master.
       - name: Print Version build numbers
         run: |
-          echo "Develop build being merged into Master is ${{ steps.get_develop_version.outputs.develop-version-tag }}"
-          echo "Master branch will be tagged ${{ steps.get_next_master_version.outputs.next-master-version-tag }} after completion."
-          echo "Develop will be bumped to ${{ steps.get_next_master_version.outputs.next-master-version-tag }}-${{ steps.get_develop_qualifier.outputs.develop-qualifier-tag }}."
+          echo "Develop build being merged into Master is ${{ steps.calculate_next_versions.outputs.develop-version-tag }}"
+          echo "Master branch will be tagged ${{ steps.calculate_next_versions.outputs.next-master-version-tag }} after completion."
+          echo "Develop will be bumped to ${{ steps.calculate_next_versions.outputs.next-develop-version-tag }}"
 
-      - name: Tag Master branch build as ${{ steps.get_next_master_version.outputs.next-master-version-tag }}
+      - name: Tag Master branch build as ${{ steps.calculate_next_versions.outputs.next-master-version-tag }}
         if: always()
         id: tag_version_master
         run: |
-          echo "This step would have tagged the Master branch build as ${{ steps.get_next_master_version.outputs.next-master-version-tag }}"
+          echo "This step would have tagged the Master branch build as ${{ steps.calculate_next_versions.outputs.next-master-version-tag }}"
 
       # Increment the Develop tag when branch is merged to Master
       # Develop should be the same version as Master, but keep it's qualifier intact since we're not making any changes to Develop.
-      - name: Bump Develop to ${{ steps.get_next_master_version.outputs.next-master-version-tag }}-${{ steps.get_develop_qualifier.outputs.develop-qualifier-tag }}
+      - name: Bump Develop to ${{ steps.calculate_next_versions.outputs.next-develop-version-tag }}
         if: always()
         run: |
-          $MASTER_VERSION="${{ steps.get_next_master_version.outputs.next-master-version-tag }}"
-          $QUALIFIER="${{ steps.get_develop_qualifier.outputs.develop-qualifier-tag }}"
-          echo "This step would have checked out develop and updated the tag to $MASTER_VERSION-$QUALIFIER"
+          $NEXT_DEVELOP_VERSION="${{ steps.calculate_next_versions.outputs.next-develop-version-tag }}"
+          echo "This step would have checked out develop and updated the tag to $NEXT_DEVELOP_VERSION"
