@@ -71,7 +71,7 @@ jobs:
           echo "::set-output name=develop-version-tag::$DEVELOP_TAG"
           echo "::set-output name=develop-qualifier-tag::$QUALIFIER"
           echo "::set-output name=next-master-version-tag::$NEXT_MASTER_VERSION"
-          echo "::set-output name=next-develop-version-tag::$NEXT_DEVELOP_VERSION"          
+          echo "::set-output name=next-develop-version-tag::$NEXT_DEVELOP_VERSION"
 
       # Required for Bridge to build *.exe installer
 #      - name: Install NSIS
@@ -98,12 +98,21 @@ jobs:
 #        run: |
 #          echo "${{ steps.calculate_next_versions.outputs.next-master-version-tag }}" > bridge-backend/meditechConfig/version.txt
 
+      # Tag Master branch
+      - name: Set Master Version to ${{ steps.calculate_next_versions.outputs.next-master-version-tag }} and commit it
+        run: |
+          mvn versions:set -DnewVersion="${{ steps.calculate_next_versions.outputs.next-master-version-tag }}"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add ./pom.xml
+          git commit -m "POM Master version set"
+          git pull
+          git push
+
       # Build Master branch
       - name: Build Master with Maven
         # FIXME: Change this from install to deploy.
-        # ? This needs to be updated to commit the Master/Develop version changes to the pom.
         run: |
-          mvn versions:set -DnewVersion="${{ steps.calculate_next_versions.outputs.next-master-version-tag }}"
           mvn --batch-mode clean install
 
       - name: Tag Master branch build as ${{ steps.calculate_next_versions.outputs.next-master-version-tag }}
@@ -115,18 +124,6 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           custom_tag: ${{ steps.calculate_next_versions.outputs.next-master-version-tag }}
           tag_prefix: ''
-
-      # Increment the Develop tag when branch is merged to Master
-      # Develop should be the same version as Master, but keep it's qualifier intact since we're not making any changes to Develop.
-      # ? This needs to be updated to commit the Master/Develop version changes to the pom.
-      - name: Bump Develop to ${{ steps.calculate_next_versions.outputs.next-develop-version-tag }}
-        if: always()
-        run: |
-          $NEXT_DEVELOP_VERSION="${{ steps.calculate_next_versions.outputs.next-develop-version-tag }}"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git tag -a "$NEXT_DEVELOP_VERSION" -m "Updated tag to $NEXT_DEVELOP_VERSION" "origin/develop"
-          git push --tags
 
       # Create Bridge Installers.
 #      - name: Create Bridge installer
@@ -147,3 +144,19 @@ jobs:
 #          ./mvnw --batch-mode -f "uploadzip.xml" clean deploy -Drevision="$NEXT_MASTER_VERSION" -s .mvn/wrapper/settings.xml
 #          ./mvnw --batch-mode -f "uploadexe.xml" clean deploy -Drevision="$NEXT_MASTER_VERSION" -s .mvn/wrapper/settings.xml
 #          ./mvnw --batch-mode -f "uploadsetupexe.xml" clean deploy -Drevision="$NEXT_MASTER_VERSION" -s .mvn/wrapper/settings.xml
+
+      # Increment the Develop tag when branch is merged to Master
+      # Develop should be the same version as Master, but keep it's qualifier intact since we're not making any changes to Develop.
+      - name: Bump Develop to ${{ steps.calculate_next_versions.outputs.next-develop-version-tag }}
+        if: always()
+        run: |
+          $NEXT_DEVELOP_VERSION="${{ steps.calculate_next_versions.outputs.next-develop-version-tag }}"
+          git checkout develop
+          mvn versions:set -DnewVersion="${{ steps.calculate_next_versions.outputs.next-develop-version-tag }}"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add ./pom.xml
+          git commit -m "POM Develop version set"
+          git tag -a "$NEXT_DEVELOP_VERSION" -m "Updated tag to $NEXT_DEVELOP_VERSION" "origin/develop"
+          git pull
+          git push
