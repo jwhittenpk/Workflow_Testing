@@ -160,4 +160,4 @@ jobs:
           git commit -m "POM Develop version set"
           git tag -a "$NEXT_DEVELOP_VERSION" -m "Updated tag to $NEXT_DEVELOP_VERSION" "origin/develop"
           git pull
-          git push
+          git push --follow-tags
