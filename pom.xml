@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.UnkLegacy</groupId>
+    <groupId>org.JWhittenPK</groupId>
     <artifactId>FizzBuzz</artifactId>
     <version>1.4.0-d9</version>
 
@@ -18,6 +18,8 @@
         <maven.source.version>3.2.1</maven.source.version>
         <maven.surefire.version>3.0.0-M6</maven.surefire.version>
         <maven.versions.version>2.10.0</maven.versions.version>
+
+        <!-- This is a placeholder for the GitHub workflow actions.  Do not delete. -->
         <version.version>1.0.0</version.version>
     </properties>
 
