@@ -119,7 +119,7 @@ jobs:
       # Increment the Develop tag when branch is merged to Master
       # Develop should be the same version as Master, but keep it's qualifier intact since we're not making any changes to Develop.
       # ? This needs to be updated to commit the Master/Develop version changes to the pom.
-      - name: Bump Develop to ${{ steps.calculate_next_versions.outputs.next-master-version-tag }}-${{ steps.calculate_next_versions.outputs.develop-qualifier-tag }}
+      - name: Bump Develop to ${{ steps.calculate_next_versions.outputs.next-develop-version-tag }}
         if: always()
         run: |
           $NEXT_DEVELOP_VERSION="${{ steps.calculate_next_versions.outputs.next-develop-version-tag }}"
