@@ -19,7 +19,7 @@
         <maven.surefire.version>3.0.0-M6</maven.surefire.version>
         <maven.versions.version>2.10.0</maven.versions.version>
 
-        <!-- This is a placeholder for the GitHub workflow actions.  Do not delete. -->
+        <!-- This is a placeholder for semantic versioning calculations.  Do not remove. -->
         <version.version>1.0.0</version.version>
     </properties>
 
