@@ -101,7 +101,7 @@ jobs:
       - name: Set Master Version to ${{ steps.calculate_next_versions.outputs.next-master-version }} and commit it
         run: |
           $NEXT_MASTER_VERSION="${{ steps.calculate_next_versions.outputs.next-master-version }}"
-          mvn versions:set -DnewVersion=$NEXT_MASTER_VERSION versions:commit
+          mvn versions:set -DnewVersion="$NEXT_MASTER_VERSION" versions:commit
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add .
@@ -129,7 +129,7 @@ jobs:
 #      - name: Create Bridge installer
 #        run: |
 #          $MASTER_VERSION="${{ steps.calculate_next_versions.outputs.next-master-version }}"
-#          & 'C:\Program Files (x86)\NSIS\makensis.exe' /DMIM_FILENAME="D:\a\pk-bridge\pk-bridge\bridge-build\bridge.zip" /DVERSION_NUMBER=$MASTER_VERSION /DPRODUCT_VERSION=$MASTER_VERSION "D:\a\pk-bridge\pk-bridge\installer\bridge\bridge.nsi"
+#          & 'C:\Program Files (x86)\NSIS\makensis.exe' /DMIM_FILENAME="D:\a\pk-bridge\pk-bridge\bridge-build\bridge.zip" /DVERSION_NUMBER="$MASTER_VERSION" /DPRODUCT_VERSION="$MASTER_VERSION" "D:\a\pk-bridge\pk-bridge\installer\bridge\bridge.nsi"
 #          mkdir staging
 
       # Copy zip and exe files. Add version number to .exe file.
@@ -141,9 +141,9 @@ jobs:
 #          copy "D:/a/pk-bridge/pk-bridge/bridge-build/*.zip" staging
 #          copy "D:/a/pk-bridge/pk-bridge/installer/bridge/*.exe" staging
 #          copy "D:\a\pk-bridge\pk-bridge\installer\bridge\bridgesetup-$NEXT_MASTER_VERSION.exe" "D:\a\pk-bridge\pk-bridge\staging\bridge.exe"
-#          ./mvnw --batch-mode -f "uploadzip.xml" clean deploy -Drevision=$NEXT_MASTER_VERSION -s .mvn/wrapper/settings.xml
-#          ./mvnw --batch-mode -f "uploadexe.xml" clean deploy -Drevision=$NEXT_MASTER_VERSION -s .mvn/wrapper/settings.xml
-#          ./mvnw --batch-mode -f "uploadsetupexe.xml" clean deploy -Drevision=$NEXT_MASTER_VERSION -s .mvn/wrapper/settings.xml
+#          ./mvnw --batch-mode -f "uploadzip.xml" clean deploy -Drevision="$NEXT_MASTER_VERSION" -s .mvn/wrapper/settings.xml
+#          ./mvnw --batch-mode -f "uploadexe.xml" clean deploy -Drevision="$NEXT_MASTER_VERSION" -s .mvn/wrapper/settings.xml
+#          ./mvnw --batch-mode -f "uploadsetupexe.xml" clean deploy -Drevision="$NEXT_MASTER_VERSION" -s .mvn/wrapper/settings.xml
 
       # Increment the Develop minor version after it is merged to Master
       # Develop should be 0.1.0 (1 minor version) ahead of Master, but keep it's qualifier intact since we're not making any changes to Develop.
@@ -153,7 +153,7 @@ jobs:
         run: |
           $NEXT_DEVELOP_VERSION="${{ steps.calculate_next_versions.outputs.next-develop-version }}"
           git checkout develop
-          mvn versions:set -DnewVersion=$NEXT_DEVELOP_VERSION versions:commit
+          mvn versions:set -DnewVersion="$NEXT_DEVELOP_VERSION" versions:commit
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add .
