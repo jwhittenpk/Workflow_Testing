@@ -17,7 +17,7 @@
         <maven.flatten.version>1.2.7</maven.flatten.version>
         <maven.source.version>3.2.1</maven.source.version>
         <maven.surefire.version>3.0.0-M6</maven.surefire.version>
-        <maven.versions.version>2.10.0</maven.versions.version>
+        <maven.versions.version>2.11.0</maven.versions.version>
 
         <!-- This is a placeholder for semantic versioning calculations.  Do not remove. -->
         <version.version>1.0.0</version.version>
