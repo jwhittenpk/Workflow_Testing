@@ -5,6 +5,7 @@ name: Bump Develop version after merge to Master
 
 # Increment the Develop minor version after it is merged to Master
 # Develop should be 0.1.0 (1 minor version) ahead of Master.
+# Note: This workflow will only run when a Pull Request from Develop is CLOSED and MERGED to Master.
 
 on:
   pull_request:
@@ -14,7 +15,7 @@ on:
 
 jobs:
   Increment_Develop:
-    if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true && github.head_ref == 'develop' && github.base_ref == 'master'
     runs-on: ubuntu-latest
 
     strategy:
@@ -45,9 +46,6 @@ jobs:
           key: maven-${{ matrix.os }}-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             maven-${{ matrix.os }}-
-
-#      - name: Change branch to Develop
-#        run: git checkout develop
 
       - name: Calculate next version
         id: calc-next-version
