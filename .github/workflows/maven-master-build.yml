@@ -1,17 +1,15 @@
 # This workflow will build a Java project with Maven
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
-name: Build for Master branch
+name: Build, Deploy, and Tag Master branch
 
 on:
-  workflow_dispatch:
-
   push:
     branches:
       - master
 
 jobs:
-  Setup_Build:
+  Release_Master:
     runs-on: windows-latest
 
     strategy:
@@ -49,28 +47,20 @@ jobs:
           restore-keys: |
             maven-${{ matrix.os }}-
 
-      # $MERGED_VERSION is Develop build being merged into Master.
-      # Version numbers are in <Major>.<Minor>.<Patch> format.  $MAJOR, $MINOR, $NEXT_MINOR, and $PATCH are those respective numbers.
-      # $QUALIFIER is the build information from $DEVELOP_TAG, eg, "1.0.245-d20220513_1553.abcdef" should return "d20220513_1553.abcdef".
-      # $NEXT_MASTER_VERSION should be $MERGED_VERSION without the $QUALIFIER, eg "1.0.245-d20220513_1553.abcdef" would be "1.0.245".
-      # $NEXT_DEVELOP_VERSION should be one ahead of $NEXT_MASTER_VERSION.
-      # eg, if $NEXT_MASTER_VERSION is 1.2.0, $NEXT_DEVELOP_VERSION should be 1.3.0-SNAPSHOT
-      - name: Calculate next Master and Develop Versions
-        id: calculate_next_versions
+      # $CURRENT_PROJECT_VERSION is commit pushed into Master.
+      # Version numbers are in <Major>.<Minor>.<Patch> format.  $MAJOR, $MINOR, and $PATCH are those respective numbers.
+      # $MASTER_VERSION should be $CURRENT_PROJECT_VERSION without the possible $QUALIFIER, eg "1.0.245-d20220513_1553.abcdef" would be "1.0.245".
+      - name: Calculate Master Version
+        id: calculate_master_version
         run: |
-          $MERGED_VERSION=mvn help:evaluate -Dexpression="project.version" -q -DforceStdout
-          $MAJOR=mvn build-helper:parse-version -D"version.version"=$MERGED_VERSION help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
-          $MINOR=mvn build-helper:parse-version -D"version.version"=$MERGED_VERSION help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
-          $NEXT_MINOR=mvn build-helper:parse-version -D"version.version"=$MERGED_VERSION help:evaluate -Dexpression="parsedVersion.nextMinorVersion" -q -DforceStdout
-          $PATCH=mvn build-helper:parse-version -D"version.version"=$MERGED_VERSION help:evaluate -Dexpression="parsedVersion.buildNumber" -q -DforceStdout
-          $NEXT_MASTER_VERSION=$MAJOR+'.'+$MINOR+'.'+$PATCH
-          $NEXT_DEVELOP_VERSION=$MAJOR+'.'+$NEXT_MINOR+'.0-SNAPSHOT'
-          echo "MERGED_VERSION = $MERGED_VERSION"
-          echo "NEXT_MASTER_VERSION = $NEXT_MASTER_VERSION"
-          echo "NEXT_DEVELOP_VERSION = $NEXT_DEVELOP_VERSION"
-          echo "::set-output name=merged-version::$MERGED_VERSION"
-          echo "::set-output name=next-master-version::$NEXT_MASTER_VERSION"
-          echo "::set-output name=next-develop-version::$NEXT_DEVELOP_VERSION"
+          $CURRENT_PROJECT_VERSION=mvn help:evaluate -Dexpression="project.version" -q -DforceStdout
+          $MAJOR=mvn build-helper:parse-version -D"version.version"=$CURRENT_PROJECT_VERSION help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
+          $MINOR=mvn build-helper:parse-version -D"version.version"=$CURRENT_PROJECT_VERSION help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
+          $PATCH=mvn build-helper:parse-version -D"version.version"=$CURRENT_PROJECT_VERSION help:evaluate -Dexpression="parsedVersion.buildNumber" -q -DforceStdout
+          $MASTER_VERSION=$MAJOR+'.'+$MINOR+'.'+$PATCH
+          echo "Version of push being merged into Master is $CURRENT_PROJECT_VERSION"
+          echo "Master branch will be tagged $MASTER_VERSION after completion."
+          echo "::set-output name=master-version::$MASTER_VERSION"
 
       # Required for Bridge to build *.exe installer
 #      - name: Install NSIS
@@ -85,78 +75,38 @@ jobs:
 #          token: ${{ secrets.ORG_GHTOKEN }}
 #          path: config
 
-      # Display the version numbers for both Master and the Develop build being merged into Master.
-      - name: Print Version build numbers
-        run: |
-          echo "Develop build being merged into Master is ${{ steps.calculate_next_versions.outputs.merged-version }}"
-          echo "Master branch will be tagged ${{ steps.calculate_next_versions.outputs.next-master-version }} after completion."
-          echo "Develop will be bumped to ${{ steps.calculate_next_versions.outputs.next-develop-version }}"
-          
-      # View Bridge version at a glance on bridge server
-#      - name: Update version.txt
-#        run: |
-#          echo "${{ steps.calculate_next_versions.outputs.next-master-version }}" > bridge-backend/meditechConfig/version.txt
-
-      # Tag Master branch
-      - name: Set Master Version to ${{ steps.calculate_next_versions.outputs.next-master-version }} and commit it
-        run: |
-          $NEXT_MASTER_VERSION="${{ steps.calculate_next_versions.outputs.next-master-version }}"
-          mvn versions:set -DnewVersion="$NEXT_MASTER_VERSION" versions:commit
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add .
-          git commit -m "POM Master version set to $NEXT_MASTER_VERSION"
-          git pull
-          git push
-
       # Build Master branch
-      - name: Build Master with Maven
+      - name: Build Master ${{ steps.calculate_master_version.outputs.master-version }} with Maven
         # FIXME: Change this from install to deploy.
+        # Update version.txt file to allow users to quickly determine Bridge version.
+        #          echo "${{ steps.calculate_master_version.outputs.master-version }}" > bridge-backend/meditechConfig/version.txt
         run: |
+          mvn versions:set -DnewVersion="${{ steps.calculate_master_version.outputs.master-version }}" versions:commit
           mvn --batch-mode clean install
 
-      - name: Tag Master branch build as ${{ steps.calculate_next_versions.outputs.next-master-version }}
-        if: always()
-        # Always run this step even if the build fails.  This will let us create a new version without getting 409 POM conflict errors.
+      # Create Bridge.zip and Bridge.exe
+#      - name: Create Bridge installer
+#        run: |
+#          $MASTER_VERSION="${{ steps.calculate_master_version.outputs.master-version }}"
+#          & 'C:\Program Files (x86)\NSIS\makensis.exe' /DMIM_FILENAME="D:\a\pk-bridge\pk-bridge\bridge-build\bridge.zip" /DVERSION_NUMBER="$MASTER_VERSION" /DPRODUCT_VERSION="$MASTER_VERSION" "D:\a\pk-bridge\pk-bridge\installer\bridge\bridge.nsi"
+#          mkdir staging
+
+      # Copy zip and exe files to staging. Add version number to .exe file.
+      # Then upload them to GitHub via deploy.
+#      - name: Copy and Upload Bridge zip, exe, and setupexe via Maven
+#        run: |
+#          $MASTER_VERSION="${{ steps.calculate_master_version.outputs.master-version }}"
+#          copy "D:/a/pk-bridge/pk-bridge/bridge-build/*.zip" staging
+#          copy "D:/a/pk-bridge/pk-bridge/installer/bridge/*.exe" staging
+#          copy "D:\a\pk-bridge\pk-bridge\installer\bridge\bridgesetup-$MASTER_VERSION.exe" "D:\a\pk-bridge\pk-bridge\staging\bridge.exe"
+#          ./mvnw --batch-mode -f "uploadzip.xml" clean deploy -Drevision="$MASTER_VERSION" -s .mvn/wrapper/settings.xml
+#          ./mvnw --batch-mode -f "uploadexe.xml" clean deploy -Drevision="$MASTER_VERSION" -s .mvn/wrapper/settings.xml
+#          ./mvnw --batch-mode -f "uploadsetupexe.xml" clean deploy -Drevision="$MASTER_VERSION" -s .mvn/wrapper/settings.xml
+
+      - name: Tag Master branch build as ${{ steps.calculate_master_version.outputs.master-version }}
         uses: mathieudutour/github-tag-action@v5.2
         with:
           # FIXME: github_token: ${{ secrets.ORG_GHTOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          custom_tag: ${{ steps.calculate_next_versions.outputs.next-master-version }}
+          custom_tag: ${{ steps.calculate_master_version.outputs.master-version }}
           tag_prefix: ''
-
-      # Create Bridge.zip
-#      - name: Create Bridge installer
-#        run: |
-#          $MASTER_VERSION="${{ steps.calculate_next_versions.outputs.next-master-version }}"
-#          & 'C:\Program Files (x86)\NSIS\makensis.exe' /DMIM_FILENAME="D:\a\pk-bridge\pk-bridge\bridge-build\bridge.zip" /DVERSION_NUMBER="$MASTER_VERSION" /DPRODUCT_VERSION="$MASTER_VERSION" "D:\a\pk-bridge\pk-bridge\installer\bridge\bridge.nsi"
-#          mkdir staging
-
-      # Copy zip and exe files. Add version number to .exe file.
-      # Then upload them to GitHub.
-#      - name: Copy and Upload Bridge zip, exe, and setupexe via Maven
-#        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.base_ref == 'master' && github.head_ref == 'develop' }}
-#        run: |
-#          $NEXT_MASTER_VERSION="${{ steps.calculate_next_versions.outputs.next-master-version }}"
-#          copy "D:/a/pk-bridge/pk-bridge/bridge-build/*.zip" staging
-#          copy "D:/a/pk-bridge/pk-bridge/installer/bridge/*.exe" staging
-#          copy "D:\a\pk-bridge\pk-bridge\installer\bridge\bridgesetup-$NEXT_MASTER_VERSION.exe" "D:\a\pk-bridge\pk-bridge\staging\bridge.exe"
-#          ./mvnw --batch-mode -f "uploadzip.xml" clean deploy -Drevision="$NEXT_MASTER_VERSION" -s .mvn/wrapper/settings.xml
-#          ./mvnw --batch-mode -f "uploadexe.xml" clean deploy -Drevision="$NEXT_MASTER_VERSION" -s .mvn/wrapper/settings.xml
-#          ./mvnw --batch-mode -f "uploadsetupexe.xml" clean deploy -Drevision="$NEXT_MASTER_VERSION" -s .mvn/wrapper/settings.xml
-
-      # Increment the Develop minor version after it is merged to Master
-      # Develop should be 0.1.0 (1 minor version) ahead of Master, but keep it's qualifier intact since we're not making any changes to Develop.
-      - name: Bump Develop version to ${{ steps.calculate_next_versions.outputs.next-develop-version }}
-        if: always()
-        # Always run this step even if the build fails.  This will let us create a new version without getting 409 POM conflict errors.
-        run: |
-          $NEXT_DEVELOP_VERSION="${{ steps.calculate_next_versions.outputs.next-develop-version }}"
-          git checkout develop
-          mvn versions:set -DnewVersion="$NEXT_DEVELOP_VERSION" versions:commit
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add .
-          git commit -m "POM Develop version bumped to $NEXT_DEVELOP_VERSION"
-          git pull
-          git push
