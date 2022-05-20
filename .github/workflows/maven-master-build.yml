@@ -79,8 +79,8 @@ jobs:
       - name: Build Master ${{ steps.calculate_master_version.outputs.master-version }} with Maven
         # FIXME: Change this from install to deploy.
         # Update version.txt file to allow users to quickly determine Bridge version.
+        #          echo "${{ steps.calculate_master_version.outputs.master-version }}" > bridge-backend/meditechConfig/version.txt
         run: |
-#          echo "${{ steps.calculate_master_version.outputs.master-version }}" > bridge-backend/meditechConfig/version.txt
           mvn versions:set -DnewVersion="${{ steps.calculate_master_version.outputs.master-version }}" versions:commit
           mvn --batch-mode clean install
 
