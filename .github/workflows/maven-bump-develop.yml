@@ -46,13 +46,22 @@ jobs:
           restore-keys: |
             maven-${{ matrix.os }}-
 
-      - name: Bump Develop version next minor version
+      - name: Checkout Develop and calculate next version
+        id: calc-next-version
+        run: |
+          export current=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout
+          export major=`mvn build-helper:parse-version -Dversion.version=current help:evaluate -Dexpression=parsedVersion.majorVersion -q -DforceStdout`
+          export minor=`mvn build-helper:parse-version -Dversion.version=current help:evaluate -Dexpression=parsedVersion.nextMinorVersion -q -DforceStdout`
+          echo "::set-output name=nextVersion::${major}.${minor}.0-SNAPSHOT"
+          echo "Develop will be bumped to ${nextVersion}"
+
+      - name: Bump Develop version to ${{ steps.calc-next-version.outputs.nextVersion }}
         run: |
           git checkout develop
-          mvn build-helper:parse-version versions:set -DnewVersion=\${parsedVersion.majorVersion}.\${parsedVersion.nextMinorVersion}.0-SNAPSHOT versions:commit
+          mvn versions:set -DnewVersion=${{ steps.calc-next-version.outputs.nextVersion }} versions:commit
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add .
-          git commit -m "POM Develop minor version incremented"
+          git commit -m "POM Develop bumped to ${{ steps.calc-next-version.outputs.nextVersion }}"
           git pull
           git push
