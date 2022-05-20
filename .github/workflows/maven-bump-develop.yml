@@ -28,10 +28,10 @@ jobs:
         shell: bash
 
     steps:
-      - name: Clone the source code
-        uses: actions/checkout@v2
+      - name: Checkout Develop
+        uses: actions/checkout@v3
         with:
-          fetch-depth: 0
+          ref: develop
 
       - name: Set up JDK ${{ matrix.jdk }}
         uses: actions/setup-java@v1
@@ -46,8 +46,8 @@ jobs:
           restore-keys: |
             maven-${{ matrix.os }}-
 
-      - name: Change branch to Develop
-        run: git checkout develop
+#      - name: Change branch to Develop
+#        run: git checkout develop
 
       - name: Calculate next version
         id: calc-next-version
@@ -56,11 +56,9 @@ jobs:
           export major=`mvn build-helper:parse-version -Dversion.version="${current}" help:evaluate -Dexpression=parsedVersion.majorVersion -q -DforceStdout`
           export minor=`mvn build-helper:parse-version -Dversion.version="${current}" help:evaluate -Dexpression=parsedVersion.nextMinorVersion -q -DforceStdout`
           export nextVersion="${major}.${minor}.0-SNAPSHOT"
-          echo "::set-output name=nextVersion::${nextVersion}"
           echo "Current version is ${current}"
-          echo "Major version is ${major}"
-          echo "Next Minor version is ${minor}"
           echo "Develop will be bumped to ${nextVersion}"
+          echo "::set-output name=nextVersion::${nextVersion}"
 
       - name: Bump Develop version to ${{ steps.calc-next-version.outputs.nextVersion }}
         run: |
