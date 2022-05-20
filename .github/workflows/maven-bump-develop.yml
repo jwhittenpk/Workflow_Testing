@@ -49,7 +49,7 @@ jobs:
       - name: Checkout Develop and calculate next version
         id: calc-next-version
         run: |
-          export current=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout
+          export current=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout`
           export major=`mvn build-helper:parse-version -Dversion.version=current help:evaluate -Dexpression=parsedVersion.majorVersion -q -DforceStdout`
           export minor=`mvn build-helper:parse-version -Dversion.version=current help:evaluate -Dexpression=parsedVersion.nextMinorVersion -q -DforceStdout`
           echo "::set-output name=nextVersion::${major}.${minor}.0-SNAPSHOT"
