@@ -5,6 +5,7 @@ name: Bump Develop version after merge to Master
 
 # Increment the Develop minor version after it is merged to Master
 # Develop should be 0.1.0 (1 minor version) ahead of Master.
+# Develop should always end with .0-SNAPSHOT as it's version number.
 # Note: This workflow will only run when a Pull Request from Develop is CLOSED and MERGED to Master.
 
 on:
@@ -56,14 +57,14 @@ jobs:
           export nextVersion="${major}.${minor}.0-SNAPSHOT"
           echo "Current version is ${current}"
           echo "Develop will be bumped to ${nextVersion}"
-          echo "::set-output name=nextVersion::${nextVersion}"
+          echo "nextVersion=${nextVersion}" >> $GITHUB_ENV
 
-      - name: Bump Develop version to ${{ steps.calc-next-version.outputs.nextVersion }}
+      - name: Bump Develop version to ${{ env.nextVersion }}
         run: |
-          mvn versions:set -DnewVersion=${{ steps.calc-next-version.outputs.nextVersion }} versions:commit
+          mvn versions:set -DnewVersion=${{ env.nextVersion }} versions:commit
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add .
-          git commit -m "POM Develop bumped to ${{ steps.calc-next-version.outputs.nextVersion }}"
+          git commit -m "POM Develop bumped to ${{ env.nextVersion }}"
           git pull
           git push

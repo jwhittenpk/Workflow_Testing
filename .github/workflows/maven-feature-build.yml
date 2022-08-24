@@ -87,23 +87,30 @@ jobs:
         id: vars
         run: |
           $TAG=git describe --tags --abbrev=0
-          echo "::set-output name=version-tag::$TAG"
+          echo "Tag=$TAG" >> $env:GITHUB_ENV
 
       # Get next semantic build tag number
       - name: Get version
         id: vars1
         run: |
-          $MAJOR=mvn build-helper:parse-version -D"version.version"=${{ steps.vars.outputs.version-tag }} help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
-          $MINOR=mvn build-helper:parse-version -D"version.version"=${{ steps.vars.outputs.version-tag }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
-          $INCREMENT=mvn build-helper:parse-version -D"version.version"=${{ steps.vars.outputs.version-tag }} help:evaluate -Dexpression="parsedVersion.nextIncrementalVersion" -q -DforceStdout
+          $MAJOR=mvn build-helper:parse-version -D"version.version"=${{ env.Tag }} help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
+          $MINOR=mvn build-helper:parse-version -D"version.version"=${{ env.Tag }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
+          $INCREMENT=mvn build-helper:parse-version -D"version.version"=${{ env.Tag }} help:evaluate -Dexpression="parsedVersion.nextIncrementalVersion" -q -DforceStdout
           $NEXT_SEMANTIC_TAG=$MAJOR+'.'+$MINOR+'.'+$INCREMENT
-          echo "::set-output name=version::$NEXT_SEMANTIC_TAG"
+          echo "Next_Tag=$NEXT_SEMANTIC_TAG" >> $env:GITHUB_ENV
+          echo "Next_Build=$NEXT_SEMANTIC_TAG-f${{ github.run_number }}" >> $env:GITHUB_ENV
+
+      - name: Print env variables
+        run: |
+          echo "${{ env.Tag }}"
+          echo "${{ env.Next_Tag }}"
+          echo "${{ env.Next_Build }}"
 
       - name: Build with Maven - feature branch
         run: |
-          echo "version on feature branch will be ${{ steps.vars1.outputs.version }}-f${{github.run_number}}"
-          echo "tag is ${{ steps.vars.outputs.version-tag}}"
-          mvn versions:set -DnewVersion="${{ steps.vars1.outputs.version }}-f${{github.run_number}}"
+          echo "version on feature branch will be ${{ env.Next_Build }}"
+          echo "tag is ${{ env.Tag }}"
+          mvn versions:set -DnewVersion="${{ env.Next_Build }}"
           mvn --batch-mode clean install
 
       - name: Tag the code on a feature branch
@@ -111,5 +118,5 @@ jobs:
         uses: mathieudutour/github-tag-action@v5.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          custom_tag: ${{ steps.vars1.outputs.version }}-f${{github.run_number}}
+          custom_tag: ${{ env.Next_Build }}
           tag_prefix: ''
