@@ -60,7 +60,7 @@ jobs:
           $MASTER_VERSION=$MAJOR+'.'+$MINOR+'.'+$PATCH
           echo "Version of push being merged into Master is $CURRENT_PROJECT_VERSION"
           echo "Master branch will be tagged $MASTER_VERSION after completion."
-          echo "::set-output name=master-version::$MASTER_VERSION"
+          echo "Master_Version=$MASTER_VERSION" >> $env:GITHUB_ENV
 
       # Required for Bridge to build *.exe installer
 #      - name: Install NSIS
@@ -76,12 +76,12 @@ jobs:
 #          path: config
 
       # Build Master branch
-      - name: Build Master ${{ steps.calculate_master_version.outputs.master-version }} with Maven
+      - name: Build Master ${{ env.Master_Version }} with Maven
         # FIXME: Change this from install to deploy.
         # Update version.txt file to allow users to quickly determine Bridge version.
         #          echo "${{ steps.calculate_master_version.outputs.master-version }}" > bridge-backend/meditechConfig/version.txt
         run: |
-          mvn versions:set -DnewVersion="${{ steps.calculate_master_version.outputs.master-version }}" versions:commit
+          mvn versions:set -DnewVersion="${{ env.Master_Version }}" versions:commit
           mvn --batch-mode clean install
 
       # Create Bridge.zip and Bridge.exe
@@ -103,10 +103,10 @@ jobs:
 #          ./mvnw --batch-mode -f "uploadexe.xml" clean deploy -Drevision="$MASTER_VERSION" -s .mvn/wrapper/settings.xml
 #          ./mvnw --batch-mode -f "uploadsetupexe.xml" clean deploy -Drevision="$MASTER_VERSION" -s .mvn/wrapper/settings.xml
 
-      - name: Tag Master branch build as ${{ steps.calculate_master_version.outputs.master-version }}
+      - name: Tag Master branch build as ${{ env.Master_Version }}
         uses: mathieudutour/github-tag-action@v5.2
         with:
           # FIXME: github_token: ${{ secrets.ORG_GHTOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          custom_tag: ${{ steps.calculate_master_version.outputs.master-version }}
+          custom_tag: ${{ env.Master_Version }}
           tag_prefix: ''
