@@ -60,7 +60,7 @@ jobs:
           $MASTER_VERSION=$MAJOR+'.'+$MINOR+'.'+$PATCH
           echo "Version of push being merged into Master is $CURRENT_PROJECT_VERSION"
           echo "Master branch will be tagged $MASTER_VERSION after completion."
-          echo "Master_Version=$MASTER_VERSION" >> $GITHUB_ENV
+          echo "Master_Version=$MASTER_VERSION" >> $env:GITHUB_ENV
 
       # Required for Bridge to build *.exe installer
 #      - name: Install NSIS
@@ -76,7 +76,7 @@ jobs:
 #          path: config
 
       # Build Master branch
-      - name: Build Master ${{ steps.calculate_master_version.outputs.master-version }} with Maven
+      - name: Build Master ${{ env.Master_Version }} with Maven
         # FIXME: Change this from install to deploy.
         # Update version.txt file to allow users to quickly determine Bridge version.
         #          echo "${{ steps.calculate_master_version.outputs.master-version }}" > bridge-backend/meditechConfig/version.txt
