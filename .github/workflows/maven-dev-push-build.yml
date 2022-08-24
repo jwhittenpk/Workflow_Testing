@@ -4,13 +4,6 @@
 name: Build for Develop/Support/Hotfix branch
 
 on:
-  workflow_dispatch:
-
-  push:
-    branches:
-      - develop
-      - support/**
-      - hotfix/**
   pull_request:
     branches:
       - develop
@@ -95,11 +88,11 @@ jobs:
           $MINOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
           $BUILDNUMBER=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.incrementalVersion" -q -DforceStdout
           $CURRENT_VERSION=$MAJOR+'.'+$MINOR+'.'+$BUILDNUMBER
-          if ( ${{ github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.base_ref == 'develop' && startsWith(github.head_ref, 'feature/') }} ) {
+          if ( ${{ github.event.pull_request.merged == true && github.base_ref == 'develop' && startsWith(github.head_ref, 'feature/') }} ) {
           echo "currentVersion=$CURRENT_VERSION-d${{ github.run_number }}" >> $env:GITHUB_ENV }
-          else if ( ${{ github.event_name == 'pull_request' && github.event.pull_request.merged == true  && startsWith(github.base_ref, 'support/') && startsWith(github.head_ref, 'feature/') }} ) {
+          elseif ( ${{ github.event.pull_request.merged == true  && startsWith(github.base_ref, 'support/') && startsWith(github.head_ref, 'feature/') }} ) {
           echo "currentVersion=$CURRENT_VERSION-s${{ github.run_number }}" >> $env:GITHUB_ENV }
-          else if ( ${{ github.event_name == 'pull_request' && github.event.pull_request.merged == true  && startsWith(github.base_ref, 'hotfix/') && startsWith(github.head_ref, 'feature/') }} ) {
+          elseif ( ${{ github.event.pull_request.merged == true  && startsWith(github.base_ref, 'hotfix/') && startsWith(github.head_ref, 'feature/') }} ) {
           echo "currentVersion=$CURRENT_VERSION-h${{ github.run_number }}" >> $env:GITHUB_ENV }
           else {
           exit 0
