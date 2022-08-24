@@ -87,7 +87,7 @@ jobs:
         id: vars
         run: |
           $TAG=git describe --tags --abbrev=0
-          echo "Tag=$TAG" >> $GITHUB_ENV
+          echo "Tag=$TAG" >> $env:GITHUB_ENV
 
       # Get next semantic build tag number
       - name: Get version
@@ -97,8 +97,14 @@ jobs:
           $MINOR=mvn build-helper:parse-version -D"version.version"=${{ env.Tag }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
           $INCREMENT=mvn build-helper:parse-version -D"version.version"=${{ env.Tag }} help:evaluate -Dexpression="parsedVersion.nextIncrementalVersion" -q -DforceStdout
           $NEXT_SEMANTIC_TAG=$MAJOR+'.'+$MINOR+'.'+$INCREMENT
-          echo "Next_Tag=$NEXT_TAG" >> $GITHUB_ENV
-          echo "Next_Build=$NEXT_TAG-f${{ github.run_number }}" >> $GITHUB_ENV
+          echo "Next_Tag=$NEXT_SEMANTIC_TAG" >> $env:GITHUB_ENV
+          echo "Next_Build=$NEXT_SEMANTIC_TAG-f${{ github.run_number }}" >> $env:GITHUB_ENV
+
+      - name: Print env variables
+        run: |
+          echo "${{ env.Tag }}"
+          echo "${{ env.Next_Tag }}"
+          echo "${{ env.Next_Build }}"
 
       - name: Build with Maven - feature branch
         run: |
