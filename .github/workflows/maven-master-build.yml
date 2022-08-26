@@ -64,12 +64,9 @@ jobs:
 
       # Update Develop with any possible changes from the Release branch
       - name: Create pull request into Develop
-        continue-on-error: true
-        uses: thomaseizinger/create-pull-request@1.0.0
+        uses: peter-evans/create-pull-request@v4
         with:
-          #github-token: ${{ secrets.ORG_GHTOKEN }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          head: master
+          branch: master
           base: develop
           title: Merge Release ${{ env.Master_Version }} Hotfixes into Develop
           reviewers: ${{ github.event.issue.user.login }}
