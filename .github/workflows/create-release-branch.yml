@@ -62,7 +62,7 @@ jobs:
       - name: Create Release Branch from Develop
         id: create-branch
         run: |
-          git checkout -b release/${{ env.Release_Version }}
+          git checkout -b release/${{ env.Release_Version }} develop
           git push origin release/${{ env.Release_Version }}
           echo "::set-output name=commit::$(git rev-parse HEAD)"
 
