@@ -89,14 +89,13 @@ jobs:
           $BUILDNUMBER=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.incrementalVersion" -q -DforceStdout
           $CURRENT_VERSION=$MAJOR+'.'+$MINOR+'.'+$BUILDNUMBER
           if ( ${{ github.event.pull_request.merged == true && github.base_ref == 'develop' && startsWith(github.head_ref, 'feature/') }} ) {
-          echo "currentVersion=$CURRENT_VERSION-d${{ github.run_number }}" >> $env:GITHUB_ENV }
+          $CURRENT_VERSION="$CURRENT_VERSION-d${{ github.run_number }}" }
           elseif ( ${{ github.event.pull_request.merged == true  && startsWith(github.base_ref, 'support/') && startsWith(github.head_ref, 'feature/') }} ) {
-          echo "currentVersion=$CURRENT_VERSION-s${{ github.run_number }}" >> $env:GITHUB_ENV }
+          $CURRENT_VERSION="$CURRENT_VERSION-s${{ github.run_number }}" }
           elseif ( ${{ github.event.pull_request.merged == true  && startsWith(github.base_ref, 'hotfix/') && startsWith(github.head_ref, 'feature/') }} ) {
-          echo "currentVersion=$CURRENT_VERSION-h${{ github.run_number }}" >> $env:GITHUB_ENV }
-          else {
-          exit 0
-          }
+          $CURRENT_VERSION="$CURRENT_VERSION-h${{ github.run_number }}" }
+          else { exit 0 }
+          echo "currentVersion=$CURRENT_VERSION" >> $env:GITHUB_ENV
 
       # Print the branch names which is worked on
       - name: Print branch names
