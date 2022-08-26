@@ -59,34 +59,24 @@ jobs:
           echo "Release branch will be tagged $RELEASE_VERSION after completion."
           echo "Release_Version=$RELEASE_VERSION" >> $env:GITHUB_ENV
 
-      # Print the branch names which is worked on
-      - name: Print branch names
-        run: |
-          echo "Branch name is: ${{ github.base_ref }}"
-          echo "HEAD branch is: ${{ github.head_ref }}"
-
       - name: Create Release Branch from Develop
         id: create-branch
         run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git pull
           git checkout -b release/${{ env.Release_Version }} origin/develop
           git push origin release/${{ env.Release_Version }}
           echo "::set-output name=commit::$(git rev-parse HEAD)"
 
-#      FIXME: Disable this for now.
-#      - name: Create pull request into Master
-#        uses: peter-evans/create-pull-request@v4
-#        with:
-#          branch: release/${{ env.Release_Version }}
-#          base: master
-#          title: ${{ env.Release_Version }} into Master
-#          reviewers: ${{ github.event.issue.user.login }}
-#          body: |
-#            Hi!
-#            This PR was created to merge Develop into Master.
-#            I've updated the version name and code commit: ${{ steps.create-branch.outputs.commit }}.
+      - name: Create pull request into Master
+        uses: peter-evans/create-pull-request@v4
+        with:
+          branch: release/${{ env.Release_Version }}
+          base: master
+          title: ${{ env.Release_Version }} into Master
+          reviewers: ${{ github.event.issue.user.login }}
+          body: |
+            Hi!
+            This PR was created to merge Develop into Master.
+            I've updated the version name and code commit: ${{ steps.create-branch.outputs.commit }}.
 
       # Required for Bridge to build *.exe installer
       #      - name: Install NSIS
