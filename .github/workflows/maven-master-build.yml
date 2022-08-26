@@ -62,19 +62,6 @@ jobs:
           echo "Master branch will be tagged $MASTER_VERSION after completion."
           echo "Master_Version=$MASTER_VERSION" >> $env:GITHUB_ENV
 
-      # Update Develop with any possible changes from the Release branch
-      - name: Create pull request into Develop
-        uses: peter-evans/create-pull-request@v4
-        with:
-          branch: master
-          base: develop
-          title: Merge Release ${{ env.Master_Version }} Hotfixes into Develop
-          reviewers: ${{ github.event.issue.user.login }}
-          body: |
-            Hi!
-            This PR was created to merge Release Hotfixes into Develop.
-            I've updated the version name and code commit: ${{ steps.create-branch.outputs.commit }}.
-
       # Required for Bridge to build *.exe installer
 #      - name: Install NSIS
 #        run: |

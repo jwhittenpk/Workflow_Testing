@@ -59,6 +59,13 @@ jobs:
           echo "Release branch will be tagged $RELEASE_VERSION after completion."
           echo "Release_Version=$RELEASE_VERSION" >> $env:GITHUB_ENV
 
+      - name: Create Release Branch from Develop
+        id: create-branch
+        run: |
+          git checkout -b release/${{ env.Release_Version }}
+          git push origin release/${{ env.Release_Version }}
+          echo "::set-output name=commit::$(git rev-parse HEAD)"
+
       # Required for Bridge to build *.exe installer
       #      - name: Install NSIS
       #        run: |
