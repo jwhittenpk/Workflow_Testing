@@ -1,0 +1,136 @@
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: Create Release from Develop
+
+on: workflow_dispatch
+
+jobs:
+  Create_Release:
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['windows']
+        jdk: [ '1.8' ]
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Clone the source code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK ${{ matrix.jdk }}
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.jdk }}
+
+      # FIXME: Reminder to restore all 'mvn' to './mvnw' in real PK-Bridge
+      # FIXME: Also '-s .mvn/wrapper/settings.xml'
+      #      - name: File System preparation
+      #        run: |
+      #          chmod 755 mvnw
+
+      - name: Set up cache for ~./m2/repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-${{ matrix.os }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-${{ matrix.os }}-
+
+      # $CURRENT_PROJECT_VERSION is commit pushed into Release.
+      # Version numbers are in <Major>.<Minor>.<Patch> format.  $MAJOR, $MINOR, and $PATCH are those respective numbers.
+      # $RELEASE_VERSION should be $CURRENT_PROJECT_VERSION without the possible $QUALIFIER, eg "1.0.245-d20220513_1553.abcdef" would be "1.0.245".
+      - name: Calculate Release Version
+        id: calculate_release_version
+        run: |
+          $CURRENT_PROJECT_VERSION=mvn help:evaluate -Dexpression="project.version" -q -DforceStdout
+          $MAJOR=mvn build-helper:parse-version -D"version.version"=$CURRENT_PROJECT_VERSION help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
+          $MINOR=mvn build-helper:parse-version -D"version.version"=$CURRENT_PROJECT_VERSION help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
+          $PATCH=mvn build-helper:parse-version -D"version.version"=$CURRENT_PROJECT_VERSION help:evaluate -Dexpression="parsedVersion.buildNumber" -q -DforceStdout
+          $RELEASE_VERSION=$MAJOR+'.'+$MINOR+'.'+$PATCH
+          echo "Version of push being merged into Release is $CURRENT_PROJECT_VERSION"
+          echo "Release branch will be tagged $RELEASE_VERSION after completion."
+          echo "Release_Version=$RELEASE_VERSION" >> $env:GITHUB_ENV
+
+      - name: Create Release Branch
+        id: create-branch
+        run: |
+          git checkout -b release/${{ env.Release_Version }}
+          git push origin release/${{ env.Release_Version }}
+          echo "::set-output name=commit::$(git rev-parse HEAD)"
+
+      # Required for Bridge to build *.exe installer
+      #      - name: Install NSIS
+      #        run: |
+      #         choco install nsis.install --version=2.46 -y
+
+      # Required for Bridge to build via Maven
+      #      - name: Checkout config files before maven build
+      #        uses: actions/checkout@release
+      #        with:
+      #          repository: 'hcapatientkeeper/MOB_8_2_CONFIG'
+      #          token: ${{ secrets.ORG_GHTOKEN }}
+      #          path: config
+
+      # Build Release branch
+      - name: Build Release ${{ env.Release_Version }} with Maven
+        # FIXME: Change this from install to deploy.
+        # Update version.txt file to allow users to quickly determine Bridge version.
+        #          echo "${{ steps.calculate_release_version.outputs.release-version }}" > bridge-backend/meditechConfig/version.txt
+        run: |
+          mvn versions:set -DnewVersion="${{ env.Release_Version }}" versions:commit
+          mvn --batch-mode clean install
+
+      # Create Bridge.zip and Bridge.exe
+      #      - name: Create Bridge installer
+      #        run: |
+      #          $RELEASE_VERSION="${{ steps.calculate_release_version.outputs.release-version }}"
+      #          & 'C:\Program Files (x86)\NSIS\makensis.exe' /DMIM_FILENAME="D:\a\pk-bridge\pk-bridge\bridge-build\bridge.zip" /DVERSION_NUMBER="$RELEASE_VERSION" /DPRODUCT_VERSION="$RELEASE_VERSION" "D:\a\pk-bridge\pk-bridge\installer\bridge\bridge.nsi"
+      #          mkdir staging
+
+      # Copy zip and exe files to staging. Add version number to .exe file.
+      # Then upload them to GitHub via deploy.
+      #      - name: Copy and Upload Bridge zip, exe, and setupexe via Maven
+      #        run: |
+      #          $RELEASE_VERSION="${{ steps.calculate_release_version.outputs.release-version }}"
+      #          copy "D:/a/pk-bridge/pk-bridge/bridge-build/*.zip" staging
+      #          copy "D:/a/pk-bridge/pk-bridge/installer/bridge/*.exe" staging
+      #          copy "D:\a\pk-bridge\pk-bridge\installer\bridge\bridgesetup-$RELEASE_VERSION.exe" "D:\a\pk-bridge\pk-bridge\staging\bridge.exe"
+      #          ./mvnw --batch-mode -f "uploadzip.xml" clean deploy -Drevision="$RELEASE_VERSION" -s .mvn/wrapper/settings.xml
+      #          ./mvnw --batch-mode -f "uploadexe.xml" clean deploy -Drevision="$RELEASE_VERSION" -s .mvn/wrapper/settings.xml
+      #          ./mvnw --batch-mode -f "uploadsetupexe.xml" clean deploy -Drevision="$RELEASE_VERSION" -s .mvn/wrapper/settings.xml
+
+      - name: Create pull request into Master
+        uses: thomaseizinger/create-pull-request@1.0.0
+        with:
+          #GITHUB_TOKEN: ${{ secrets.ORG_GHTOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          head: release/${{ env.Release_Version }}
+          base: master
+          title: release/${{ env.Release_Version }} into Master
+          reviewers: ${{ github.event.issue.user.login }}
+          body: |
+            Hi!
+            This PR was created to merge Develop into Master.
+            I've updated the version name and code commit: ${{ steps.create-branch.outputs.commit }}.
+
+      - name: Create pull request into Develop
+        uses: thomaseizinger/create-pull-request@1.0.0
+        with:
+          #GITHUB_TOKEN: ${{ secrets.ORG_GHTOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          head: release/${{ env.Release_Version }}
+          base: develop
+          title: release/${{ env.Release_Version }} into Master
+          reviewers: ${{ github.event.issue.user.login }}
+          body: |
+            Hi!
+            This PR was created to merge Release into Develop.
+            I've updated the version name and code commit: ${{ steps.create-branch.outputs.commit }}.
