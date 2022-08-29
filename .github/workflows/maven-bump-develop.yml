@@ -63,11 +63,12 @@ jobs:
         id: create-branch
         run: |
           git checkout -b feature/${{ env.nextVersion }} origin/master
-          git push origin release/${{ env.nextVersion }}
+          git push origin feature/${{ env.nextVersion }}
           echo "::set-output name=commit::$(git rev-parse HEAD)"
 
       - name: Bump Develop version to ${{ env.nextVersion }}
         run: |
+          git checkout origin/feature/${{ env.nextVersion }}
           mvn versions:set -DnewVersion=${{ env.nextVersion }} versions:commit
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
