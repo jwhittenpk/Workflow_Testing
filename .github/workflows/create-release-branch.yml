@@ -72,7 +72,7 @@ jobs:
           script: |
             const { repo, owner } = context.repo;
             const result = await github.rest.pulls.create({
-              title: '${{ env.Release_Version }} into Master',
+              title: 'Merge ${{ env.Release_Version }} into Master',
               owner,
               repo,
               head: 'release/${{ env.Release_Version }}',
