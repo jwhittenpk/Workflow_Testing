@@ -75,20 +75,6 @@ jobs:
           echo "Branch name is: ${{ github.base_ref }}"
           echo "HEAD branch is: ${{ github.head_ref }}"
 
-      # Update Develop with any possible changes from the Release branch
-      # https://github.com/marketplace/actions/create-pull-request
-#      - name: Merge Release Hotfixes into Develop
-#        uses: peter-evans/create-pull-request@v4
-#        with:
-#          branch: master
-#          # branch: ${{ github.head_ref }} This would have been release, but it's deleted by the time this runs.
-#          base: develop
-#          title: Merge Release Hotfixes into Develop ${{ env.NextVersion }}
-#          reviewers: ${{ github.event.issue.user.login }}
-#          body: |
-#            Hi!
-#            This PR was created to merge Release Hotfixes into Develop ${{ env.NextVersion }}.
-
       - name: Create pull request into Master
         uses: actions/github-script@v6
         with:
