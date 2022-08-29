@@ -63,7 +63,7 @@ jobs:
         id: create-branch
         run: |
           git checkout -b feature/${{ env.nextVersion }} origin/master
-          git push origin release/${{ env.nextVersion }}
+          git push origin feature/${{ env.nextVersion }}
           echo "::set-output name=commit::$(git rev-parse HEAD)"
 
       - name: Bump Develop version to ${{ env.nextVersion }}
