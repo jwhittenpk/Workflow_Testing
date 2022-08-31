@@ -9,6 +9,9 @@ jobs:
   Create_Release:
     runs-on: windows-latest
 
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     strategy:
       fail-fast: false
       matrix:
