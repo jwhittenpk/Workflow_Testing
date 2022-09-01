@@ -1,0 +1,29 @@
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: Auto Approve Pull Request for Develop Bump
+
+# Increment the Develop minor version after a Release branch is merged to Master
+# Develop should be 0.1.0 (1 minor version) ahead of Master.
+# Develop should always end with .0-SNAPSHOT as it's version number after this workflow is run.
+# Note: This workflow will only run when a Pull Request from Release is CLOSED and MERGED to Master.
+
+on:
+  pull_request:
+    types: [opened]
+    branches:
+      - develop
+
+jobs:
+  Auto-Approve:
+    runs-on: ubuntu-latest
+    if: github.actor == 'github-actions[bot]'
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Approve and merge Pull Request
+        run: |
+          gh pr review --approve
+          gh pr merge
