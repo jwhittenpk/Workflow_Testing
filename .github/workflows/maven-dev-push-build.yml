@@ -90,11 +90,11 @@ jobs:
           $CURRENT_VERSION=$MAJOR+'.'+$MINOR+'.'+$BUILDNUMBER
           echo $CURRENT_VERSION
           $CURRENT_VERSION=$CURRENT_VERSION + $(
-              if ( ${{ github.event.pull_request.merged == true && github.base_ref == 'develop' && startsWith(github.head_ref, 'feature/') }} ) {
+              if ( $${{ github.event.pull_request.merged == true && github.base_ref == 'develop' && startsWith(github.head_ref, 'feature/') }} ) {
                   "-d${{ github.run_number }}" }
-              elseif ( ${{ github.event.pull_request.merged == true  && startsWith(github.base_ref, 'support/') && startsWith(github.head_ref, 'feature/') }} ) {
+              elseif ( $${{ github.event.pull_request.merged == true  && startsWith(github.base_ref, 'support/') && startsWith(github.head_ref, 'feature/') }} ) {
                   "-s${{ github.run_number }}" }
-              elseif ( ${{ github.event.pull_request.merged == true  && startsWith(github.base_ref, 'hotfix/') && startsWith(github.head_ref, 'feature/') }} ) {
+              elseif ( $${{ github.event.pull_request.merged == true  && startsWith(github.base_ref, 'hotfix/') && startsWith(github.head_ref, 'feature/') }} ) {
                   "-h${{ github.run_number }}" }
               else { 
                   exit 0
