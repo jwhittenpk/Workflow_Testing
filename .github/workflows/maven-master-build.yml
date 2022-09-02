@@ -47,9 +47,9 @@ jobs:
           restore-keys: |
             maven-${{ matrix.os }}-
 
-      # $CURRENT_PROJECT_VERSION is commit pushed into Master.
+      # $CURRENT_PROJECT_VERSION is version pushed into Master, eg "1.3.0-SNAPSHOT"
       # Version numbers are in <Major>.<Minor>.<Patch> format.  $MAJOR, $MINOR, and $PATCH are those respective numbers.
-      # $MASTER_VERSION should be $CURRENT_PROJECT_VERSION without the possible $QUALIFIER, eg "1.0.245-d20220513_1553.abcdef" would be "1.0.245".
+      # $MASTER_VERSION should be $CURRENT_PROJECT_VERSION without the possible $QUALIFIER, eg "1.3.0-SNAPSHOT" would be "1.3.0".
       - name: Calculate Master Version
         id: calculate_master_version
         run: |
