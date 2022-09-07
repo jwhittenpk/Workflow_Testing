@@ -47,6 +47,13 @@ jobs:
           restore-keys: |
             maven-${{ matrix.os }}-
 
+      - name: Set up cache for NSIS v2.46
+        id: cache_NSIS
+        uses: actions/cache@v2
+        with:
+          path: C:\Program Files (x86)\NSIS
+          key: ${{ matrix.os }}-nsis
+
       # $CURRENT_PROJECT_VERSION is commit pushed into Release.
       # Version numbers are in <Major>.<Minor>.<Patch> format.  $MAJOR, $MINOR, and $PATCH are those respective numbers.
       # $RELEASE_VERSION should be $CURRENT_PROJECT_VERSION without the possible $QUALIFIER, eg "1.0.245-d20220513_1553.abcdef" would be "1.0.245".
@@ -81,11 +88,6 @@ jobs:
           --title "Merge ${{ env.Release_Version }} into Master"
           --body "Created by GitHub action"
 
-      # Required for Bridge to build *.exe installer
-      #      - name: Install NSIS
-      #        run: |
-      #         choco install nsis.install --version=2.46 -y
-
       # Required for Bridge to build via Maven
       #      - name: Checkout config files before maven build
       #        uses: actions/checkout@release
@@ -103,21 +105,36 @@ jobs:
           mvn versions:set -DnewVersion="${{ env.Release_Version }}" versions:commit
           mvn --batch-mode clean install
 
+      # Required for Bridge to build *.exe installer
+      - name: Install NSIS if not cached
+        if: steps.cache_NSIS.outputs.cache-hit != 'true'
+        run: |
+          [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+          choco install nsis.install --version=2.46 -y -dv
+
+      # This step overwrites parts of the NSIS program with PK specific code.  I don't know what exactly.
+      #      - name: Extract NSIS log if not cached
+      #        if: steps.cache_NSIS.outputs.cache-hit != 'true'
+      #        run: |
+      #          echo "$(pwd)"
+      #          7z.exe x "D:\a\pk-bridge\pk-bridge\bridge-build\nsis-2.46-log.zip" -o"C:\Program Files (x86)\NSIS" -y -r
+      #          cd "D:\a\pk-bridge\pk-bridge"
+      #          echo "$(pwd)"
+      #          dir
+
       # Create Bridge.zip and Bridge.exe
       #      - name: Create Bridge installer
       #        run: |
-      #          $RELEASE_VERSION="${{ steps.calculate_release_version.outputs.release-version }}"
-      #          & 'C:\Program Files (x86)\NSIS\makensis.exe' /DMIM_FILENAME="D:\a\pk-bridge\pk-bridge\bridge-build\bridge.zip" /DVERSION_NUMBER="$RELEASE_VERSION" /DPRODUCT_VERSION="$RELEASE_VERSION" "D:\a\pk-bridge\pk-bridge\installer\bridge\bridge.nsi"
-      #          mkdir staging
+      #          & 'C:\Program Files (x86)\NSIS\makensis.exe' /DMIM_FILENAME="D:\a\pk-bridge\pk-bridge\bridge-build\bridge.zip" /DVERSION_NUMBER="${{ env.Release_Build }}" /DPRODUCT_VERSION="${{ env.Release_Build }}" "D:\a\pk-bridge\pk-bridge\installer\bridge\bridge.nsi"
 
       # Copy zip and exe files to staging. Add version number to .exe file.
       # Then upload them to GitHub via deploy.
       #      - name: Copy and Upload Bridge zip, exe, and setupexe via Maven
       #        run: |
-      #          $RELEASE_VERSION="${{ steps.calculate_release_version.outputs.release-version }}"
+      #          mkdir staging
       #          copy "D:/a/pk-bridge/pk-bridge/bridge-build/*.zip" staging
       #          copy "D:/a/pk-bridge/pk-bridge/installer/bridge/*.exe" staging
-      #          copy "D:\a\pk-bridge\pk-bridge\installer\bridge\bridgesetup-$RELEASE_VERSION.exe" "D:\a\pk-bridge\pk-bridge\staging\bridge.exe"
-      #          ./mvnw --batch-mode -f "uploadzip.xml" clean deploy -Drevision="$RELEASE_VERSION" -s .mvn/wrapper/settings.xml
-      #          ./mvnw --batch-mode -f "uploadexe.xml" clean deploy -Drevision="$RELEASE_VERSION" -s .mvn/wrapper/settings.xml
-      #          ./mvnw --batch-mode -f "uploadsetupexe.xml" clean deploy -Drevision="$RELEASE_VERSION" -s .mvn/wrapper/settings.xml
+      #          copy "D:\a\pk-bridge\pk-bridge\installer\bridge\bridgesetup-${{ env.Release_Build }}.exe" "D:\a\pk-bridge\pk-bridge\staging\bridge.exe"
+      #          ./mvnw --batch-mode -f "uploadzip.xml" clean deploy -Drevision="${{ env.Release_Build }}" -s .mvn/wrapper/settings.xml
+      #          ./mvnw --batch-mode -f "uploadexe.xml" clean deploy -Drevision="${{ env.Release_Build }}" -s .mvn/wrapper/settings.xml
+      #          ./mvnw --batch-mode -f "uploadsetupexe.xml" clean deploy -Drevision="${{ env.Release_Build }}" -s .mvn/wrapper/settings.xml

@@ -64,6 +64,13 @@ jobs:
           restore-keys: |
             maven-${{ matrix.os }}-
 
+      - name: Set up cache for NSIS v2.46
+        id: cache_NSIS
+        uses: actions/cache@v2
+        with:
+          path: C:\Program Files (x86)\NSIS
+          key: ${{ matrix.os }}-nsis
+
       - name: Get latest tag
         id: get-latest-tag
         run: |
@@ -111,14 +118,52 @@ jobs:
       - name: Build with Maven - ${{ env.currentVersion }}
         run: |
           echo "Version will be ${{ env.currentVersion }}"
-          echo "tag is ${{ env.version-tag }}"
           mvn versions:set -DnewVersion="${{ env.currentVersion }}"
           mvn --batch-mode clean install
 
-      - name: Tag the code
+      - name: Tag the code - ${{ env.currentVersion }}
         id: tag_version_develop
         uses: mathieudutour/github-tag-action@v5.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           custom_tag: ${{ env.currentVersion }}
           tag_prefix: ''
+
+      # Required for Bridge to build *.exe installer
+      - name: Install NSIS if not cached
+        if: steps.cache_NSIS.outputs.cache-hit != 'true'
+        run: |
+          [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+          choco install nsis.install --version=2.46 -y -dv
+
+      # This step overwrites parts of the NSIS program with PK specific code.  I don't know what exactly.
+#      - name: Extract NSIS log if not cached
+#        if: steps.cache_NSIS.outputs.cache-hit != 'true'
+#        run: |
+#          echo "$(pwd)"
+#          7z.exe x "D:\a\pk-bridge\pk-bridge\bridge-build\nsis-2.46-log.zip" -o"C:\Program Files (x86)\NSIS" -y -r
+#          cd "D:\a\pk-bridge\pk-bridge"
+#          echo "$(pwd)"
+#          dir
+
+      # Create Dispatcher. Copy zip and exe files.  Rename *.exe file. - develop branch
+#      - name: Create Bridge installer
+#        run: |
+#          & 'C:\Program Files (x86)\NSIS\makensis.exe' /DMIM_FILENAME="D:\a\pk-bridge\pk-bridge\bridge-build\bridge.zip" /DVERSION_NUMBER="${{ env.currentVersion }}" /DPRODUCT_VERSION="${{ env.currentVersion }}" "D:\a\pk-bridge\pk-bridge\installer\bridge\bridge.nsi"
+
+#      - name: Copy and Upload Bridge zip, exe, and setupexe via Maven
+#        run: |
+#          mkdir staging
+#          copy "D:/a/pk-bridge/pk-bridge/bridge-build/*.zip" staging
+#          copy "D:/a/pk-bridge/pk-bridge/installer/bridge/*.exe" staging
+#          copy "D:\a\pk-bridge\pk-bridge\installer\bridge\bridgesetup-${{ env.currentVersion }}.exe" "D:\a\pk-bridge\pk-bridge\staging\bridge.exe"
+#          ./mvnw --batch-mode -f "uploadzip.xml" clean deploy -Drevision="${{ env.currentVersion }}" -s .mvn/wrapper/settings.xml
+#          ./mvnw --batch-mode -f "uploadexe.xml" clean deploy -Drevision="${{ env.currentVersion }}" -s .mvn/wrapper/settings.xml
+#          ./mvnw --batch-mode -f "uploadsetupexe.xml" clean deploy -Drevision="${{ env.currentVersion }}" -s .mvn/wrapper/settings.xml
+
+      # This will find no files under a PUSH request.  This is normal and expected.  It should only WARN.
+#      - name: Upload Bridge artifacts to GitHub
+#        uses: actions/upload-artifact@v2
+#        with:
+#          name: Bridge-${{ env.currentVersion }}_Package
+#          path: staging

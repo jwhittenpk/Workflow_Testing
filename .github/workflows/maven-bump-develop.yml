@@ -86,4 +86,4 @@ jobs:
           --base develop
           --head feature/${{ env.nextVersion }}
           --title "Bump Develop to ${{ env.nextVersion }}"
-          --body "Merge all possible changes from Release branch.  Also bump the Develop branch version to ${{ env.NextVersion }}.  This is an automated Pull Request created by GitHub action."
+          --body "Merge all possible changes from Release branch.  Also bump the Develop branch version to ${{ env.nextVersion }}.  This is an automated Pull Request created by GitHub action."
