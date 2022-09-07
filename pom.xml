@@ -6,7 +6,7 @@
 
     <groupId>org.JWhittenPK</groupId>
     <artifactId>FizzBuzz</artifactId>
-    <version>1.26.0-SNAPSHOT</version>
+    <version>1.27.0-SNAPSHOT</version>
 
     <properties>
         <maven.build.helper.version>3.3.0</maven.build.helper.version>
@@ -17,7 +17,7 @@
         <maven.flatten.version>1.3.0</maven.flatten.version>
         <maven.source.version>3.2.1</maven.source.version>
         <maven.surefire.version>3.0.0-M7</maven.surefire.version>
-        <maven.versions.version>2.11.0</maven.versions.version>
+        <maven.versions.version>2.12.0</maven.versions.version>
 
         <!-- This is a placeholder for semantic versioning calculations.  Do not remove. -->
         <version.version>1.0.0</version.version>
