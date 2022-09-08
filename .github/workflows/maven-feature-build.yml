@@ -105,10 +105,8 @@ jobs:
           echo $FEATURE_BUILD_SEMANTIC
           $CURRENT_TIME=Get-Date -Format "yyyyMMddHHmmss"
           echo "$CURRENT_TIME"
-          TZ=America/New_York
-          $CURRENT_TIME=$(date +'%Y%m%d%H%M%S')
-          echo "$CURRENT_TIME"
-          echo TZ=":US/Eastern" date +%Y%m%d%H%M%S
+          $CURRENT_DATETIME=(git log -n 1 --pretty=format:"%cd" --date='format-local:%Y%m%d%H%M%S')
+          echo "$CURRENT_DATETIME"
 
       - name: Build ${{ env.Feature_Build }} with Maven
         run: |
