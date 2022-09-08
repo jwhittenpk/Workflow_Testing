@@ -11,7 +11,7 @@ on:
       - hotfix/**
     types: [ closed ]
   schedule:
-    - cron: '0 0 * * 1,3,5'
+    - cron: '30 0 * * 1,3,5'
 
 jobs:
   validate_name:
