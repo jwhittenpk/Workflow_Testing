@@ -6,7 +6,7 @@
 
     <groupId>org.JWhittenPK</groupId>
     <artifactId>FizzBuzz</artifactId>
-    <version>1.28.0-SNAPSHOT</version>
+    <version>1.29.0-SNAPSHOT</version>
 
     <properties>
         <maven.build.helper.version>3.3.0</maven.build.helper.version>
