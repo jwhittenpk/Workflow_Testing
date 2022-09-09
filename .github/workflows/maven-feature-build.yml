@@ -101,9 +101,9 @@ jobs:
           $INCREMENT=mvn build-helper:parse-version -D"version.version"=${{ env.Tag }} help:evaluate -Dexpression="parsedVersion.nextIncrementalVersion" -q -DforceStdout
           $FEATURE_VERSION=$MAJOR+'.'+$MINOR+'.'+$INCREMENT
           echo "Feature_Build=$FEATURE_VERSION-f${{ github.run_number }}" >> $env:GITHUB_ENV
-          $CURRENT_DATETIME=(git log -n 1 --pretty=format:"%cd" --date='format:%Y%m%d%H%M%S')
-          $FEATURE_BUILD_SEMANTIC=$FEATURE_VERSION+'-f'+$CURRENT_DATETIME+'.'+$(git rev-parse --short HEAD)
-          echo "$CURRENT_DATETIME"
+          $COMMIT_DATETIME=(git log -n 1 --pretty=format:"%cd" --date='format:%Y%m%d%H%M%S')
+          $FEATURE_BUILD_SEMANTIC=$FEATURE_VERSION+'-f'+$COMMIT_DATETIME+'.'+$(git rev-parse --short HEAD)
+          echo $FEATURE_BUILD_SEMANTIC
 
       - name: Build ${{ env.Feature_Build }} with Maven
         run: |

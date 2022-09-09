@@ -59,7 +59,8 @@ jobs:
           $MINOR=mvn build-helper:parse-version -D"version.version"=$CURRENT_PROJECT_VERSION help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
           $PATCH=mvn build-helper:parse-version -D"version.version"=$CURRENT_PROJECT_VERSION help:evaluate -Dexpression="parsedVersion.buildNumber" -q -DforceStdout
           $RELEASE_VERSION=$MAJOR+'.'+$MINOR+'.'+$PATCH
-          $RELEASE_BUILD=$RELEASE_VERSION+'-r'+$(date +'%Y%m%d%H%M%S')+'.'+$(git rev-parse --short HEAD)
+          $COMMIT_DATETIME=(git log -n 1 --pretty=format:"%cd" --date='format:%Y%m%d%H%M%S')
+          $RELEASE_BUILD=$RELEASE_VERSION+'-r'+$COMMIT_DATETIME+'.'+$(git rev-parse --short HEAD)
           echo "Version of push being merged into Release is $CURRENT_PROJECT_VERSION"
           echo "Release branch will be tagged $RELEASE_VERSION after completion."
           echo "Release build will be $RELEASE_BUILD after completion."
