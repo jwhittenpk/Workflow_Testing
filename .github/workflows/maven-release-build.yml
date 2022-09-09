@@ -1,16 +1,16 @@
 # This workflow will build a Java project with Maven
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
-name: Create Release from Develop
-
-on: workflow_dispatch
+name: Build for Release branch
+on:
+  push:
+    branches:
+      - release/**
 
 jobs:
-  Create_Release:
+  Build_Bridge:
+    needs: validate_name
     runs-on: windows-latest
-
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     strategy:
       fail-fast: false
@@ -32,12 +32,6 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: ${{ matrix.jdk }}
-
-      # FIXME: Reminder to restore all 'mvn' to './mvnw' in real PK-Bridge
-      # FIXME: Also '-s .mvn/wrapper/settings.xml'
-      #      - name: File System preparation
-      #        run: |
-      #          chmod 755 mvnw
 
       - name: Set up cache for ~./m2/repository
         uses: actions/cache@v2
@@ -72,30 +66,6 @@ jobs:
           echo "Release build will be $RELEASE_BUILD after completion."
           echo "Release_Version=$RELEASE_VERSION" >> $env:GITHUB_ENV
           echo "Release_Build=$RELEASE_BUILD" >> $env:GITHUB_ENV
-
-      - name: Create Release Branch from Develop
-        id: create-branch
-        run: |
-          git switch develop
-          git checkout -b release/${{ env.Release_Version }}
-          git push --set-upstream origin release/${{ env.Release_Version }}
-
-      # See: https://cli.github.com/manual/
-      - name: Create pull request for Release into Master
-        run: >
-          gh pr create
-          --base master
-          --head release/${{ env.Release_Version }}
-          --title "Merge ${{ env.Release_Version }} into Master"
-          --body "Created by GitHub action"
-
-      # Required for Bridge to build via Maven
-      #      - name: Checkout config files before maven build
-      #        uses: actions/checkout@release
-      #        with:
-      #          repository: 'hcapatientkeeper/MOB_8_2_CONFIG'
-      #          token: ${{ secrets.ORG_GHTOKEN }}
-      #          path: config
 
       # Build Release branch
       - name: Build Release ${{ env.Release_Build }} with Maven
