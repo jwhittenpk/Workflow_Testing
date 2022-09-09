@@ -74,14 +74,12 @@ jobs:
           key: ${{ matrix.os }}-nsis
 
       - name: Get latest tag
-        id: get-latest-tag
         run: |
           $TAG=git describe --tags --abbrev=0
           echo "version-tag=$TAG" >> $env:GITHUB_ENV
 
       # Get next semantic build tag number
       - name: Get version
-        id: calc-next-version
         run: |
           $MAJOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
           $MINOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
@@ -111,12 +109,6 @@ jobs:
               }
           )
           echo "currentVersion=$CURRENT_VERSION" >> $env:GITHUB_ENV
-
-      # Print the branch names which is worked on
-      - name: Print branch names
-        run: |
-          echo "Branch name is: ${{ github.base_ref }}"
-          echo "HEAD branch is: ${{ github.head_ref }}"
 
       # Build and tag develop branch with '-d'
       - name: Build with Maven - ${{ env.currentVersion }}
