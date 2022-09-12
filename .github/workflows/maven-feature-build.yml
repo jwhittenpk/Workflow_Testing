@@ -87,33 +87,29 @@ jobs:
           }
 
       - name: Get latest tag
-        id: vars
         run: |
           $TAG=git describe --tags --abbrev=0
-          echo "Tag=$TAG" >> $env:GITHUB_ENV
+          echo "version-tag=$TAG" >> $env:GITHUB_ENV
 
       # Get next semantic build tag number
       - name: Get version
-        id: vars1
         run: |
-          $MAJOR=mvn build-helper:parse-version -D"version.version"=${{ env.Tag }} help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
-          $MINOR=mvn build-helper:parse-version -D"version.version"=${{ env.Tag }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
-          $INCREMENT=mvn build-helper:parse-version -D"version.version"=${{ env.Tag }} help:evaluate -Dexpression="parsedVersion.nextIncrementalVersion" -q -DforceStdout
+          $MAJOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
+          $MINOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
+          $INCREMENT=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.nextIncrementalVersion" -q -DforceStdout
           $FEATURE_VERSION=$MAJOR+'.'+$MINOR+'.'+$INCREMENT
           echo "Feature_Build=$FEATURE_VERSION-f${{ github.run_number }}" >> $env:GITHUB_ENV
-          $COMMIT_DATETIME=(git log -n 1 --pretty=format:"%cd" --date='format:%Y%m%d%H%M%S')
+          $COMMIT_DATETIME=(git log -n 1 --pretty=format:"%cd" --date='format:%Y%m%d_%H%M%S')
           $FEATURE_BUILD_SEMANTIC=$FEATURE_VERSION+'-f'+$COMMIT_DATETIME+'.'+$(git rev-parse --short HEAD)
           echo $FEATURE_BUILD_SEMANTIC
 
       - name: Build ${{ env.Feature_Build }} with Maven
         run: |
-          echo "version on feature branch will be ${{ env.Feature_Build }}"
-          echo "tag is ${{ env.Tag }}"
+          echo "Version on feature branch will be ${{ env.Feature_Build }}"
           mvn versions:set -DnewVersion="${{ env.Feature_Build }}"
           mvn --batch-mode clean install
 
-      - name: Tag the code on a feature branch
-        id: tag_version_feature
+      - name: Tag the code - ${{ env.Feature_Build }}
         uses: mathieudutour/github-tag-action@v5.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
