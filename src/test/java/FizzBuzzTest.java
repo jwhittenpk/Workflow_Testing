@@ -5,6 +5,7 @@ import org.junit.rules.ErrorCollector;
 import static org.junit.Assert.assertEquals;
 
 // INT-25: Basic change to simulate two developers working on different programs at the same Develop level.
+// INT-25: Another change made after INT-24 is merged to Develop.
 
 public class FizzBuzzTest {
     @Rule
