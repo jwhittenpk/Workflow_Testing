@@ -1,3 +1,5 @@
+// Comment
+
 public class FizzBuzz {
     /**
      * Basic org.UnkLegacy.FizzBuzz.FizzBuzz Solution
