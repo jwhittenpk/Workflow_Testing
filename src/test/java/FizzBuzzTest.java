@@ -4,7 +4,6 @@ import org.junit.rules.ErrorCollector;
 
 import static org.junit.Assert.assertEquals;
 
-// INT-27: This INT is to merge after the release of Master 1.30.0
 public class FizzBuzzTest {
     @Rule
     public ErrorCollector errorCollector = new ErrorCollector();
