@@ -1,0 +1,127 @@
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: Nightly Build for Develop
+
+on:
+  schedule:
+    - cron: '50 0 * * 1-5'
+
+jobs:
+  # This job checks the last commit in Develop's timestamp.  If greater than 24 hours old, this will fail.
+  # This is to prevent unnecessary duplicate nightly builds.
+  Check_Last_Commit_Date:
+    runs-on: ubuntu-latest
+    name: Check latest commit
+    outputs:
+      should_run: ${{ steps.should_run.outputs.should_run }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Print latest_commit
+        run: echo ${{ github.sha }}
+
+      - name: Check latest commit is less than a day
+        id: should_run
+        continue-on-error: true
+        if: ${{ github.event_name == 'schedule' }}
+        run: test -z $(git rev-list  --after="24 hours"  ${{ github.sha }}) && echo "::set-output name=should_run::false"
+
+  Nightly_Bridge_Build:
+    # Do not run if there has been no commits since last
+    needs: Check_Last_Commit_Date
+    if: ${{ needs.Check_Last_Commit_Date.outputs.should_run != 'false' }}
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['windows']
+        jdk: [ '1.8' ]
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Clone the source code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK ${{ matrix.jdk }}
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.jdk }}
+
+      - name: Set up cache for ~./m2/repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-${{ matrix.os }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-${{ matrix.os }}-
+
+      - name: Set up cache for NSIS v2.46
+        id: cache_NSIS
+        uses: actions/cache@v2
+        with:
+          path: C:\Program Files (x86)\NSIS
+          key: ${{ matrix.os }}-nsis
+
+      - name: update API version
+        run: |
+          mvn versions:update-properties@update-properties-latest -U
+          $POM_CHANGED=git status --porcelain
+          echo "update-properties completed-------------------"
+          if ( $POM_CHANGED -like '*pom.xml*' )
+          {
+            echo "code_changed=$POM_CHANGED" >> $env:GITHUB_ENV            
+          }
+
+      - name: Create Auto-Version Branch from Develop
+        if: ${{ env.code_changed }}
+        run: |
+          git switch develop
+          git checkout -b feature/auto-version-${{ github.run_number }}
+          git push --set-upstream origin feature/auto-version-${{ github.run_number }}
+
+      - name: Commit POM changes
+        if: ${{ env.code_changed }}
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add ./pom.xml
+          git commit -m 'POM versions changed'
+          git pull
+          git push
+
+      # See: https://cli.github.com/manual/
+      - name: Create pull request for Auto-Version into Develop
+        if: ${{ env.code_changed }}
+        run: >
+          gh pr create
+          --base develop
+          --head feature/auto-version-${{ github.run_number }}
+          --title "$(date +'%m-%d-%Y') - Maven POM auto updates into Develop"
+          --body "Created by Scheduled GitHub action"
+
+      # Get the current semantic build tag for the branch
+      - name: Get current build number
+        run: |
+          $DEVELOP_VERSION=(mvn help:evaluate -Dexpression="project.version" -q -DforceStdout).Trim("-SNAPSHOT")
+          $COMMIT_DATETIME=(git log -n 1 --pretty=format:"%cd" --date='format:%Y%m%d_%H%M%S')
+          $DEVELOP_BUILD += '-d'+$COMMIT_DATETIME+'.'+$(git rev-parse --short HEAD)
+          echo "Develop_Build=$DEVELOP_VERSION" >> $env:GITHUB_ENV
+
+      - name: Build with Maven - ${{ env.Develop_Build }}
+        run: |
+          echo "Version will be ${{ env.Develop_Build }}"
+          mvn versions:set -DnewVersion="${{ env.Develop_Build }}"
+          mvn --batch-mode clean install
+
+      # Required for Bridge to build *.exe installer
+      - name: Install NSIS if not cached
+        if: steps.cache_NSIS.outputs.cache-hit != 'true'
+        run: |
+          [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+          choco install nsis.install --version=2.46 -y -dv
