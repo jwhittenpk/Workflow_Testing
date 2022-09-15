@@ -24,9 +24,12 @@ jobs:
       - name: Check latest commit is less than a day
         id: should_run
         continue-on-error: true
-        if: ${{ github.event_name == 'schedule' }}
+        # if: ${{ github.event_name == 'schedule' }}
         # run: test -z $(git rev-list  --after="24 hours"  ${{ github.sha }}) && echo "::set-output name=should_run::false"
         run: test -z $(git rev-list  --after="10 minutes"  ${{ github.sha }}) && echo "::set-output name=should_run::false"
+
+     - name: Print result
+       run: echo ${{ steps.Check_Last_Commit_Date.outputs.should_run }}
 
   Nightly_Bridge_Build:
     # Do not run if there has been no commits since last
