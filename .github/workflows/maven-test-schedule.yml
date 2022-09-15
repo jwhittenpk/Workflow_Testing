@@ -5,7 +5,7 @@ name: Test Nightly Build for Develop
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '10,20,30,40,50 * * * 1-5'
 
 jobs:
   # This job checks the last commit in Develop's timestamp.  If greater than 24 hours old, this will fail.
