@@ -6,7 +6,7 @@ name: Test Nightly Build for Develop
 on:
   workflow_dispatch:
   schedule:
-    - cron: '10,20,30,40,50 * * * 1-5'
+    - cron: '10,20,30,40,50 9-17 * * 1-5'
 
 jobs:
   # This job checks the last commit in Develop's timestamp.  If greater than 24 hours old, this will fail.
@@ -26,7 +26,7 @@ jobs:
         continue-on-error: true
         if: ${{ github.event_name == 'schedule' }}
         # run: test -z $(git rev-list  --after="24 hours"  ${{ github.sha }}) && echo "::set-output name=should_run::false"
-        run: test -z $(git rev-list  --after="20 minutes"  ${{ github.sha }}) && echo "::set-output name=should_run::false"
+        run: test -z $(git rev-list  --after="10 minutes"  ${{ github.sha }}) && echo "::set-output name=should_run::false"
 
   Nightly_Bridge_Build:
     # Do not run if there has been no commits since last
@@ -112,7 +112,7 @@ jobs:
         run: |
           $DEVELOP_VERSION=(mvn help:evaluate -Dexpression="project.version" -q -DforceStdout).Trim("-SNAPSHOT")
           $COMMIT_DATETIME=(git log -n 1 --pretty=format:"%cd" --date='format:%Y%m%d_%H%M%S')
-          $DEVELOP_BUILD += '-d'+$COMMIT_DATETIME+'.'+$(git rev-parse --short HEAD)
+          $DEVELOP_BUILD=$DEVELOP_VERSION+'-d'+$COMMIT_DATETIME+'.'+$(git rev-parse --short HEAD)
           echo "Develop_Build=$DEVELOP_BUILD" >> $env:GITHUB_ENV
 
       - name: Build with Maven - ${{ env.Develop_Build }}
