@@ -42,7 +42,7 @@ jobs:
     runs-on: windows-latest
 
     env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.JW_TOKEN }}
 
     strategy:
       fail-fast: false
@@ -117,25 +117,25 @@ jobs:
           --title "$(date +'%m-%d-%Y') - Maven POM auto updates into Develop"
           --body "Created by Scheduled GitHub action"
 
-      # Get the current semantic build tag for the branch
-      - name: Get current build number
-        if: ${{ env.code_changed }}
-        run: |
-          $DEVELOP_VERSION=(mvn help:evaluate -Dexpression="project.version" -q -DforceStdout).Trim("-SNAPSHOT")
-          $COMMIT_DATETIME=(git log -n 1 --pretty=format:"%cd" --date='format:%Y%m%d_%H%M%S')
-          $DEVELOP_BUILD=$DEVELOP_VERSION+'-f'+$COMMIT_DATETIME+'.'+$(git rev-parse --short HEAD)
-          echo "Develop_Build=$DEVELOP_BUILD" >> $env:GITHUB_ENV
-
-      - name: Build with Maven - ${{ env.Develop_Build }}
-        if: ${{ env.code_changed }}
-        run: |
-          echo "Version will be ${{ env.Develop_Build }}"
-          mvn versions:set -DnewVersion="${{ env.Develop_Build }}"
-          mvn --batch-mode clean install
-
-      # Required for Bridge to build *.exe installer
-      - name: Install NSIS if not cached
-        if: ${{ env.code_changed && steps.cache_NSIS.outputs.cache-hit != 'true' }}
-        run: |
-          [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-          choco install nsis.install --version=2.46 -y -dv
+#      # Get the current semantic build tag for the branch
+#      - name: Get current build number
+#        if: ${{ env.code_changed }}
+#        run: |
+#          $DEVELOP_VERSION=(mvn help:evaluate -Dexpression="project.version" -q -DforceStdout).Trim("-SNAPSHOT")
+#          $COMMIT_DATETIME=(git log -n 1 --pretty=format:"%cd" --date='format:%Y%m%d_%H%M%S')
+#          $DEVELOP_BUILD=$DEVELOP_VERSION+'-f'+$COMMIT_DATETIME+'.'+$(git rev-parse --short HEAD)
+#          echo "Develop_Build=$DEVELOP_BUILD" >> $env:GITHUB_ENV
+#
+#      - name: Build with Maven - ${{ env.Develop_Build }}
+#        if: ${{ env.code_changed }}
+#        run: |
+#          echo "Version will be ${{ env.Develop_Build }}"
+#          mvn versions:set -DnewVersion="${{ env.Develop_Build }}"
+#          mvn --batch-mode clean install
+#
+#      # Required for Bridge to build *.exe installer
+#      - name: Install NSIS if not cached
+#        if: ${{ env.code_changed && steps.cache_NSIS.outputs.cache-hit != 'true' }}
+#        run: |
+#          [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+#          choco install nsis.install --version=2.46 -y -dv
