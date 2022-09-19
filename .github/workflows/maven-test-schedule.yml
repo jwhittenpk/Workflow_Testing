@@ -135,7 +135,7 @@ jobs:
 
       # Required for Bridge to build *.exe installer
       - name: Install NSIS if not cached
-        if: ${{ env.code_changed }} && ( ${{ steps.cache_NSIS.outputs.cache-hit }} != 'true')
+        if: ${{ env.code_changed }} && ( steps.cache_NSIS.outputs.cache-hit != 'true')
         run: |
           [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
           choco install nsis.install --version=2.46 -y -dv
