@@ -74,6 +74,8 @@ jobs:
         run: |
           echo "Branch name is: ${{ github.base_ref }}"
           echo "HEAD branch is: ${{ github.head_ref }}"
+          echo "Ref is: ${{ github.ref }}"
+          echo "Ref name is: ${{ github.ref_name }}"
 
       - name: Get latest tag
         run: |
@@ -99,8 +101,6 @@ jobs:
           $CURRENT_VERSION=$MAJOR+'.'+$MINOR+'.'+$BUILDNUMBER
           $CURRENT_VERSION=$CURRENT_VERSION + $(
               if ( $${{ github.base_ref == 'develop' && startsWith(github.head_ref, 'feature/') }} ) {
-                  "-d${{ github.run_number }}" }
-              elseif ( $${{ github.event_name == 'schedule' }} ) {
                   "-d${{ github.run_number }}" }
               elseif ( $${{ startsWith(github.base_ref, 'support/') && startsWith(github.head_ref, 'feature/') }} ) {
                   "-s${{ github.run_number }}" }
