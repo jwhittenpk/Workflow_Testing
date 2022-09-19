@@ -4,14 +4,11 @@
 name: Build for Develop/Support/Hotfix branch
 
 on:
-  pull_request:
+  push:
     branches:
       - develop
       - support/**
       - hotfix/**
-    types: [ closed ]
-  schedule:
-    - cron: '50 0 * * 1,3,5'
 
 jobs:
   validate_name:
@@ -73,6 +70,11 @@ jobs:
           path: C:\Program Files (x86)\NSIS
           key: ${{ matrix.os }}-nsis
 
+      - name: Print branch names
+        run: |
+          echo "Branch name is: ${{ github.base_ref }}"
+          echo "HEAD branch is: ${{ github.head_ref }}"
+
       - name: Get latest tag
         run: |
           $TAG=git describe --tags --abbrev=0
@@ -96,13 +98,13 @@ jobs:
           $BUILDNUMBER=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.incrementalVersion" -q -DforceStdout
           $CURRENT_VERSION=$MAJOR+'.'+$MINOR+'.'+$BUILDNUMBER
           $CURRENT_VERSION=$CURRENT_VERSION + $(
-              if ( $${{ github.event.pull_request.merged == true && github.base_ref == 'develop' && startsWith(github.head_ref, 'feature/') }} ) {
+              if ( $${{ github.base_ref == 'develop' && startsWith(github.head_ref, 'feature/') }} ) {
                   "-d${{ github.run_number }}" }
               elseif ( $${{ github.event_name == 'schedule' }} ) {
                   "-d${{ github.run_number }}" }
-              elseif ( $${{ github.event.pull_request.merged == true  && startsWith(github.base_ref, 'support/') && startsWith(github.head_ref, 'feature/') }} ) {
+              elseif ( $${{ startsWith(github.base_ref, 'support/') && startsWith(github.head_ref, 'feature/') }} ) {
                   "-s${{ github.run_number }}" }
-              elseif ( $${{ github.event.pull_request.merged == true  && startsWith(github.base_ref, 'hotfix/') && startsWith(github.head_ref, 'feature/') }} ) {
+              elseif ( $${{  startsWith(github.base_ref, 'hotfix/') && startsWith(github.head_ref, 'feature/') }} ) {
                   "-h${{ github.run_number }}" }
               else { 
                   exit 0

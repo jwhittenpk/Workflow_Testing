@@ -6,7 +6,7 @@ name: Test Auto-Update Dependencies for Develop
 on:
   workflow_dispatch:
   schedule:
-    - cron: '10,20,30,40,50 9-17 * * 1-5'
+    - cron: '0,10,20,30,40,50 9-17 * * 1-5'
 
 jobs:
   # This job checks the last commit in Develop's timestamp.  If greater than 24 hours old, this will fail.
@@ -135,7 +135,7 @@ jobs:
 
       # Required for Bridge to build *.exe installer
       - name: Install NSIS if not cached
-        if: ${{ env.code_changed }} && ( steps.cache_NSIS.outputs.cache-hit != 'true')
+        if: ${{ env.code_changed && steps.cache_NSIS.outputs.cache-hit != 'true' }}
         run: |
           [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
           choco install nsis.install --version=2.46 -y -dv
