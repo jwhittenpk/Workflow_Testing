@@ -1,7 +1,7 @@
 # This workflow will build a Java project with Maven
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
-name: Test Nightly Build for Develop
+name: Test Auto-Update Dependencies for Develop
 
 on:
   workflow_dispatch:
@@ -15,21 +15,25 @@ jobs:
     runs-on: ubuntu-latest
     name: Check latest commit
     outputs:
-      should_run: ${{ steps.should_run.outputs.should_run }}
+      should_run: ${{ steps.result.outputs.should_run }}
     steps:
       - uses: actions/checkout@v2
       - name: Print latest_commit
         run: echo ${{ github.sha }}
 
       - name: Check latest commit is less than a day
-        id: should_run
         continue-on-error: true
-        # if: ${{ github.event_name == 'schedule' }}
+        if: ${{ github.event_name == 'schedule' }}
         # run: test -z $(git rev-list  --after="24 hours"  ${{ github.sha }}) && echo "::set-output name=should_run::false"
-        run: test -z $(git rev-list --after="10 minutes" ${{ github.sha }}) && echo "::set-output name=should_run::false" || echo "::set-output name=should_run::true"
+        run: test -z $(git rev-list --after="10 minutes" ${{ github.sha }}) && echo "should_run=false" || echo "should_run=true" >> $GITHUB_ENV
+
+      - name: Manually triggered build, always run
+        if: ${{ github.event_name != 'schedule' }}
+        run: echo "should_run=true" >> $GITHUB_ENV
 
       - name: Print result
-        run: echo ${{ steps.should_run.outputs.should_run }}
+        id: result
+        run: echo "::set-output name=should_run::${{ env.should_run }}"
 
   Nightly_Bridge_Build:
     # Do not run if there has been no commits since last
@@ -115,13 +119,15 @@ jobs:
 
       # Get the current semantic build tag for the branch
       - name: Get current build number
+        if: ${{ env.code_changed }}
         run: |
           $DEVELOP_VERSION=(mvn help:evaluate -Dexpression="project.version" -q -DforceStdout).Trim("-SNAPSHOT")
           $COMMIT_DATETIME=(git log -n 1 --pretty=format:"%cd" --date='format:%Y%m%d_%H%M%S')
-          $DEVELOP_BUILD=$DEVELOP_VERSION+'-d'+$COMMIT_DATETIME+'.'+$(git rev-parse --short HEAD)
+          $DEVELOP_BUILD=$DEVELOP_VERSION+'-f'+$COMMIT_DATETIME+'.'+$(git rev-parse --short HEAD)
           echo "Develop_Build=$DEVELOP_BUILD" >> $env:GITHUB_ENV
 
       - name: Build with Maven - ${{ env.Develop_Build }}
+        if: ${{ env.code_changed }}
         run: |
           echo "Version will be ${{ env.Develop_Build }}"
           mvn versions:set -DnewVersion="${{ env.Develop_Build }}"
@@ -129,7 +135,7 @@ jobs:
 
       # Required for Bridge to build *.exe installer
       - name: Install NSIS if not cached
-        if: steps.cache_NSIS.outputs.cache-hit != 'true'
+        if: ${{ env.code_changed }} && ( ${{ steps.cache_NSIS.outputs.cache-hit }} != 'true')
         run: |
           [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
           choco install nsis.install --version=2.46 -y -dv
