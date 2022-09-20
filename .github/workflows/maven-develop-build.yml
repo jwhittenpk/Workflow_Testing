@@ -30,7 +30,7 @@ jobs:
     outputs:
       jira_name: ${{ steps.string.outputs.lowercase }}
 
-  Build_FizzBuzz:
+  Build_bridge:
     needs: validate_name
     runs-on: windows-latest
 

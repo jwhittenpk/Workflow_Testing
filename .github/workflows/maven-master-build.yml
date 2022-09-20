@@ -9,7 +9,7 @@ on:
       - master
 
 jobs:
-  Release_Master:
+  Build_bridge:
     runs-on: windows-latest
 
     strategy:
