@@ -8,7 +8,7 @@ on:
       - release/**
 
 jobs:
-  Build_Bridge:
+  Build_bridge:
     runs-on: windows-latest
 
     strategy:
