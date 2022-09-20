@@ -20,7 +20,7 @@ on:
 jobs:
   Build_bridge:
     if: github.event.pull_request.merged == true && startsWith(github.head_ref, 'release/') && github.base_ref == 'master'
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     env:
       GITHUB_TOKEN: ${{ secrets.JW_TOKEN }}
@@ -28,12 +28,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['linux']
+        os: ['windows']
         jdk: [ '1.8' ]
 
     defaults:
       run:
-        shell: bash
+        shell: pwsh
 
     steps:
       - name: Checkout Master
@@ -63,13 +63,13 @@ jobs:
 
       - name: Calculate next version
         run: |
-          export current=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout`
-          export major=`mvn build-helper:parse-version -Dversion.version="${current}" help:evaluate -Dexpression=parsedVersion.majorVersion -q -DforceStdout`
-          export minor=`mvn build-helper:parse-version -Dversion.version="${current}" help:evaluate -Dexpression=parsedVersion.nextMinorVersion -q -DforceStdout`
-          export nextVersion="${major}.${minor}.0-SNAPSHOT"
-          echo "Current version is ${current}"
-          echo "Develop will be bumped to ${nextVersion}"
-          echo "nextVersion=${nextVersion}" >> $GITHUB_ENV
+          $CURRENT=mvn help:evaluate -Dexpression=project.version -q -DforceStdout
+          $MAJOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
+          $MINOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
+          $NEXT_VERSION=$MAJOR+'.'+$MINOR+'.0-SNAPSHOT'
+          echo "Current version is $CURRENT"
+          echo "Develop will be bumped to $NEXT_VERSION"
+          echo "nextVersion=$NEXT_VERSION" >> $env:GITHUB_ENV
 
       - name: Create bump Feature Branch from Master
         run: |
