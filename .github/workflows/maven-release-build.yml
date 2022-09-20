@@ -51,7 +51,7 @@ jobs:
       # $RELEASE_BUILD should be <project.version> with a new qualifier of '-r[Date_Time of commit].[commit short sha]', eg "1.0.245-r20220914_1547.abcdef"
       - name: Calculate Release Version
         run: |
-          $RELEASE_VERSION=(./mvnw help:evaluate -Dexpression="project.version" -q -DforceStdout -s .mvn/wrapper/settings.xml).Trim("-SNAPSHOT")
+          $RELEASE_VERSION=(mvn help:evaluate -Dexpression="project.version" -q -DforceStdout).Trim("-SNAPSHOT")
           $COMMIT_DATETIME=(git log -n 1 --pretty=format:"%cd" --date='format:%Y%m%d_%H%M%S')
           $RELEASE_BUILD=$RELEASE_VERSION+'-r'+$COMMIT_DATETIME+'.'+$(git rev-parse --short HEAD)
           echo "Release branch will be feature/$RELEASE_VERSION after completion."
