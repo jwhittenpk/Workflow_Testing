@@ -10,13 +10,6 @@ on:
     branches:
       - feature/**
 
-  workflow_run:
-    workflows: [ "Bump Develop version after merge to Master" ]
-    branches:
-      - feature/**
-    types:
-      - completed
-
 jobs:
   validate_name:
     runs-on: ubuntu-latest
