@@ -1,6 +1,4 @@
-// INT-24: Basic change to simulate two developers working on different programs at the same Develop level.
-// INT-28: A special change was required in release! OH NO!
-// This is a dumb change to add nothing, but to at least add something new for a new Master release to test.
+// Comment
 
 public class FizzBuzz {
     /**

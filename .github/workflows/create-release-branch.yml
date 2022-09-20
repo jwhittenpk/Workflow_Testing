@@ -54,20 +54,13 @@ jobs:
           path: C:\Program Files (x86)\NSIS
           key: ${{ matrix.os }}-nsis
 
-      # $CURRENT_PROJECT_VERSION is commit pushed into Release.
-      # Version numbers are in <Major>.<Minor>.<Patch> format.  $MAJOR, $MINOR, and $PATCH are those respective numbers.
-      # $RELEASE_VERSION should be $CURRENT_PROJECT_VERSION without the possible $QUALIFIER, eg "1.0.245-d20220513_1553.abcdef" would be "1.0.245".
-      # $RELEASE_BUILD should be $CURRENT_PROJECT_VERSION with a new $QUALIFIER of '-r[Date/Time create].[commit]'
+      # $RELEASE_VERSION should be <project.version> without -SNAPSHOT, eg "1.0.245-SNAPSHOT" would be "1.0.245".
+      # $RELEASE_BUILD should be <project.version> with a new qualifier of '-r[Date_Time of commit].[commit short sha]', eg "1.0.245-r20220914_1547.abcdef"
       - name: Calculate Release Version
         run: |
-          $CURRENT_PROJECT_VERSION=mvn help:evaluate -Dexpression="project.version" -q -DforceStdout
-          $MAJOR=mvn build-helper:parse-version -D"version.version"=$CURRENT_PROJECT_VERSION help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
-          $MINOR=mvn build-helper:parse-version -D"version.version"=$CURRENT_PROJECT_VERSION help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
-          $PATCH=mvn build-helper:parse-version -D"version.version"=$CURRENT_PROJECT_VERSION help:evaluate -Dexpression="parsedVersion.buildNumber" -q -DforceStdout
-          $RELEASE_VERSION=$MAJOR+'.'+$MINOR+'.'+$PATCH
+          $RELEASE_VERSION=(mvn help:evaluate -Dexpression="project.version" -q -DforceStdout).Trim("-SNAPSHOT")
           $COMMIT_DATETIME=(git log -n 1 --pretty=format:"%cd" --date='format:%Y%m%d_%H%M%S')
           $RELEASE_BUILD=$RELEASE_VERSION+'-r'+$COMMIT_DATETIME+'.'+$(git rev-parse --short HEAD)
-          echo "Version of push being merged into Release is $CURRENT_PROJECT_VERSION"
           echo "Release branch will be tagged $RELEASE_VERSION after completion."
           echo "Release build will be $RELEASE_BUILD after completion."
           echo "Release_Version=$RELEASE_VERSION" >> $env:GITHUB_ENV

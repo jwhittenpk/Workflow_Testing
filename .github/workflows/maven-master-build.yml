@@ -9,7 +9,7 @@ on:
       - master
 
 jobs:
-  Release_Master:
+  Build_bridge:
     runs-on: windows-latest
 
     strategy:
@@ -54,17 +54,10 @@ jobs:
           path: C:\Program Files (x86)\NSIS
           key: ${{ matrix.os }}-nsis
 
-      # $CURRENT_PROJECT_VERSION is version pushed into Master, eg "1.3.0-SNAPSHOT"
-      # Version numbers are in <Major>.<Minor>.<Patch> format.  $MAJOR, $MINOR, and $PATCH are those respective numbers.
-      # $MASTER_VERSION should be $CURRENT_PROJECT_VERSION without the possible $QUALIFIER, eg "1.3.0-SNAPSHOT" would be "1.3.0".
+      # $MASTER_VERSION should be <project.version> without "-SNAPSHOT", eg "1.3.0-SNAPSHOT" would be "1.3.0".
       - name: Calculate Master Version
         run: |
-          $CURRENT_PROJECT_VERSION=mvn help:evaluate -Dexpression="project.version" -q -DforceStdout
-          $MAJOR=mvn build-helper:parse-version -D"version.version"=$CURRENT_PROJECT_VERSION help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
-          $MINOR=mvn build-helper:parse-version -D"version.version"=$CURRENT_PROJECT_VERSION help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
-          $PATCH=mvn build-helper:parse-version -D"version.version"=$CURRENT_PROJECT_VERSION help:evaluate -Dexpression="parsedVersion.buildNumber" -q -DforceStdout
-          $MASTER_VERSION=$MAJOR+'.'+$MINOR+'.'+$PATCH
-          echo "Version of push being merged into Master is $CURRENT_PROJECT_VERSION"
+          $MASTER_VERSION=(mvn help:evaluate -Dexpression="project.version" -q -DforceStdout).Trim("-SNAPSHOT")
           echo "Master branch will be tagged $MASTER_VERSION after completion."
           echo "Master_Version=$MASTER_VERSION" >> $env:GITHUB_ENV
 

@@ -30,7 +30,7 @@ jobs:
     outputs:
       jira_name: ${{ steps.string.outputs.lowercase }}
 
-  Build_Bridge:
+  Build_bridge:
     needs: validate_name
     runs-on: windows-latest
 
@@ -96,12 +96,12 @@ jobs:
         run: |
           $MAJOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
           $MINOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
-          $INCREMENT=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.nextIncrementalVersion" -q -DforceStdout
-          $FEATURE_VERSION=$MAJOR+'.'+$MINOR+'.'+$INCREMENT
+          $PATCH=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.nextIncrementalVersion" -q -DforceStdout
+          $FEATURE_VERSION=$MAJOR+'.'+$MINOR+'.'+$PATCH
           echo "Feature_Build=$FEATURE_VERSION-f${{ github.run_number }}" >> $env:GITHUB_ENV
           $COMMIT_DATETIME=(git log -n 1 --pretty=format:"%cd" --date='format:%Y%m%d_%H%M%S')
-          $FEATURE_BUILD_SEMANTIC=$FEATURE_VERSION+'-f'+$COMMIT_DATETIME+'.'+$(git rev-parse --short HEAD)
-          echo $FEATURE_BUILD_SEMANTIC
+          $FEATURE_BUILD=$FEATURE_VERSION+'-f'+$COMMIT_DATETIME+'.'+$(git rev-parse --short HEAD)
+          echo $FEATURE_BUILD
 
       - name: Build ${{ env.Feature_Build }} with Maven
         run: |
