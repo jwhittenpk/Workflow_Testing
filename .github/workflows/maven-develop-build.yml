@@ -4,12 +4,11 @@
 name: Build for Develop/Support/Hotfix branch
 
 on:
-  pull_request:
+  push:
     branches:
       - develop
       - support/**
       - hotfix/**
-    types: [ closed ]
 
 jobs:
   validate_name:
@@ -70,7 +69,7 @@ jobs:
         with:
           path: C:\Program Files (x86)\NSIS
           key: ${{ matrix.os }}-nsis
-
+          
       # Get next semantic build tag number
       - name: Get version
         run: |
@@ -94,10 +93,10 @@ jobs:
                   "-d${{ github.run_number }}" }
               elseif ( $${{ github.event.pull_request.merged == true  && startsWith(github.base_ref, 'support/') && startsWith(github.head_ref, 'feature/') }} ) {
                   "-s${{ github.run_number }}" }
-              elseif ( $${{ github.event.pull_request.merged == true  && startsWith(github.base_ref, 'hotfix/') && startsWith(github.head_ref, 'feature/') }} ) {
+              elseif ( $${{ startsWith(github.ref_name, 'hotfix/') }} ) {
                   "-h${{ github.run_number }}" }
               else { 
-                  exit 0
+                  exit 1
               }
           )
           echo "Develop_Build=$DEVELOP_BUILD" >> $env:GITHUB_ENV
