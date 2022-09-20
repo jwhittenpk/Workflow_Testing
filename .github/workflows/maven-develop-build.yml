@@ -10,6 +10,11 @@ on:
       - support/**
       - hotfix/**
 
+  workflow_run:
+    workflows: ["Bump Develop version after merge to Master"]
+    types:
+      - completed
+
 jobs:
   validate_name:
     runs-on: ubuntu-latest
