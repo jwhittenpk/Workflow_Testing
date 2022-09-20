@@ -18,9 +18,9 @@ on:
       - master
 
 jobs:
-  Build_bridge:
+  Increment_Develop:
     if: github.event.pull_request.merged == true && startsWith(github.head_ref, 'release/') && github.base_ref == 'master'
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     env:
       GITHUB_TOKEN: ${{ secrets.JW_TOKEN }}
@@ -28,17 +28,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['windows']
+        os: ['linux']
         jdk: [ '1.8' ]
 
     defaults:
       run:
-        shell: pwsh
+        shell: bash
 
     steps:
       - name: Checkout Master
         uses: actions/checkout@v3
         with:
+          token: ${{ secrets.JW_TOKEN }}
           ref: master
 
       - name: Set up JDK ${{ matrix.jdk }}
@@ -54,22 +55,15 @@ jobs:
           restore-keys: |
             maven-${{ matrix.os }}-
 
-      - name: Set up cache for NSIS v2.46
-        id: cache_NSIS
-        uses: actions/cache@v2
-        with:
-          path: C:\Program Files (x86)\NSIS
-          key: ${{ matrix.os }}-nsis
-
       - name: Calculate next version
         run: |
-          $CURRENT=mvn help:evaluate -Dexpression=project.version -q -DforceStdout
-          $MAJOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
-          $MINOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
-          $NEXT_VERSION=$MAJOR+'.'+$MINOR+'.0-SNAPSHOT'
-          echo "Current version is $CURRENT"
-          echo "Develop will be bumped to $NEXT_VERSION"
-          echo "nextVersion=$NEXT_VERSION" >> $env:GITHUB_ENV
+          export current=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout`
+          export major=`mvn build-helper:parse-version -Dversion.version="${current}" help:evaluate -Dexpression=parsedVersion.majorVersion -q -DforceStdout`
+          export minor=`mvn build-helper:parse-version -Dversion.version="${current}" help:evaluate -Dexpression=parsedVersion.nextMinorVersion -q -DforceStdout`
+          export nextVersion="${major}.${minor}.0-SNAPSHOT"
+          echo "Current version is ${current}"
+          echo "Develop will be bumped to ${nextVersion}"
+          echo "nextVersion=${nextVersion}" >> $GITHUB_ENV
 
       - name: Create bump Feature Branch from Master
         run: |
@@ -94,74 +88,3 @@ jobs:
           --head feature/${{ env.nextVersion }}
           --title "Bump Develop to ${{ env.nextVersion }}"
           --body "Merge all possible changes from Release branch.  Also bump the Develop branch version to ${{ env.nextVersion }}.  This is an automated Pull Request created by GitHub action."
-
-      ## The rest of this is taken from maven-feature-build.yml
-
-      - name: Get latest tag
-        run: |
-          $TAG=git describe --tags --abbrev=0
-          echo "version-tag=$TAG" >> $env:GITHUB_ENV
-
-      # Get next semantic build tag number
-      - name: Get version
-        run: |
-          $MAJOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
-          $MINOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
-          $PATCH=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.nextIncrementalVersion" -q -DforceStdout
-          $FEATURE_VERSION=$MAJOR+'.'+$MINOR+'.'+$PATCH
-          echo "Feature_Build=$FEATURE_VERSION-f${{ github.run_number }}" >> $env:GITHUB_ENV
-          $COMMIT_DATETIME=(git log -n 1 --pretty=format:"%cd" --date='format:%Y%m%d_%H%M%S')
-          $FEATURE_BUILD=$FEATURE_VERSION+'-f'+$COMMIT_DATETIME+'.'+$(git rev-parse --short HEAD)
-          echo $FEATURE_BUILD
-
-      - name: Build ${{ env.Feature_Build }} with Maven
-        run: |
-          echo "Version on feature branch will be ${{ env.Feature_Build }}"
-          mvn versions:set -DnewVersion="${{ env.Feature_Build }}"
-          mvn --batch-mode clean install
-
-      - name: Tag the code - ${{ env.Feature_Build }}
-        uses: mathieudutour/github-tag-action@v5.2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          custom_tag: ${{ env.Feature_Build }}
-          tag_prefix: ''
-
-      # Required for Bridge to build *.exe installer
-      - name: Install NSIS if not cached
-        if: steps.cache_NSIS.outputs.cache-hit != 'true'
-        run: |
-          [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-          choco install nsis.install --version=2.46 -y -dv
-
-      # This step overwrites parts of the NSIS program with PK specific code.  I don't know what exactly.
-      #      - name: Extract NSIS log if not cached
-      #        if: steps.cache_NSIS.outputs.cache-hit != 'true'
-      #        run: |
-      #          echo "$(pwd)"
-      #          7z.exe x "D:\a\pk-bridge\pk-bridge\bridge-build\nsis-2.46-log.zip" -o"C:\Program Files (x86)\NSIS" -y -r
-      #          cd "D:\a\pk-bridge\pk-bridge"
-      #          echo "$(pwd)"
-      #          dir
-
-      # Create Bridge exe file using NSIS
-      #      - name: Create Bridge installer
-      #        run: |
-      #          & 'C:\Program Files (x86)\NSIS\makensis.exe' /DMIM_FILENAME="D:\a\pk-bridge\pk-bridge\bridge-build\bridge.zip" /DVERSION_NUMBER="${{ env.Feature_Build }}" /DPRODUCT_VERSION="${{ env.Feature_Build }}" "D:\a\pk-bridge\pk-bridge\installer\bridge\bridge.nsi"
-
-      #      - name: Copy and Upload Bridge zip, exe, and setupexe via Maven
-      #        run: |
-      #          mkdir staging
-      #          copy "D:/a/pk-bridge/pk-bridge/bridge-build/*.zip" staging
-      #          copy "D:/a/pk-bridge/pk-bridge/installer/bridge/*.exe" staging
-      #          copy "D:\a\pk-bridge\pk-bridge\installer\bridge\bridgesetup-${{ env.Feature_Build }}.exe" "D:\a\pk-bridge\pk-bridge\staging\bridge.exe"
-      #          ./mvnw --batch-mode -f "uploadzip.xml" clean deploy -Drevision="${{ env.Feature_Build }}" -s .mvn/wrapper/settings.xml
-      #          ./mvnw --batch-mode -f "uploadexe.xml" clean deploy -Drevision="${{ env.Feature_Build }}" -s .mvn/wrapper/settings.xml
-      #          ./mvnw --batch-mode -f "uploadsetupexe.xml" clean deploy -Drevision="${{ env.Feature_Build }}" -s .mvn/wrapper/settings.xml
-
-      # This will find no files under a PUSH request.  This is normal and expected.  It should only WARN.
-#      - name: Upload Bridge artifacts to Github
-#        uses: actions/upload-artifact@v2
-#        with:
-#          name: Bridge-${{ env.Feature_Build }}_Package
-#          path: staging
