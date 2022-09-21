@@ -66,9 +66,7 @@ jobs:
           echo "nextVersion=${nextVersion}" >> $GITHUB_ENV
 
       - name: Create bump Feature Branch from Master
-        run: |
-          git checkout -b feature/${{ env.nextVersion }}
-          git push --set-upstream origin feature/${{ env.nextVersion }}
+        run: git checkout -b feature/${{ env.nextVersion }}
 
       - name: Bump Develop version to ${{ env.nextVersion }}
         run: |
@@ -78,7 +76,7 @@ jobs:
           git add .
           git commit -m "POM Develop bumped to ${{ env.nextVersion }}"
           git pull
-          git push
+          git push --set-upstream origin feature/${{ env.nextVersion }}
 
       # See: https://cli.github.com/manual/
       - name: Create pull request to Bump version in Develop
