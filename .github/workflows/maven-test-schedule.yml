@@ -95,7 +95,6 @@ jobs:
         run: |
           git switch develop
           git checkout -b feature/auto-version-${{ github.run_number }}
-          git push --set-upstream origin feature/auto-version-${{ github.run_number }}
 
       - name: Commit POM changes
         if: ${{ env.code_changed }}
@@ -104,8 +103,7 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add ./pom.xml
           git commit -m 'POM versions changed'
-          git pull
-          git push
+          git push --set-upstream origin feature/auto-version-${{ github.run_number }}
 
       # See: https://cli.github.com/manual/
       - name: Create pull request for Auto-Version into Develop
