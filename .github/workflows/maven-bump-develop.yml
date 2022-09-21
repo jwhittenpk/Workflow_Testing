@@ -55,6 +55,12 @@ jobs:
           restore-keys: |
             maven-${{ matrix.os }}-
 
+      - name: Debug references
+        run: |
+          echo ${{ github.base_ref }}
+          echo ${{ github.head_ref }}
+          echo ${{ github.ref_name }}
+
       - name: Calculate next version
         run: |
           export current=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout`
