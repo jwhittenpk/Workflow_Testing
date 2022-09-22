@@ -77,6 +77,11 @@ jobs:
           path: C:\Program Files (x86)\NSIS
           key: ${{ matrix.os }}-nsis
 
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v1
+        with:
+          languages: java
+
       - name: update API version
         run: |
           mvn versions:update-properties@update-properties-latest -U
@@ -117,16 +122,16 @@ jobs:
       # Get the current semantic build tag for the branch
       - name: Get current build number
         run: |
-          $DEVELOP_VERSION=(mvn help:evaluate -Dexpression="project.version" -q -DforceStdout).Trim("-SNAPSHOT")
-          $COMMIT_DATETIME=(git log -n 1 --pretty=format:"%cd" --date='format:%Y%m%d_%H%M%S')
-          $DEVELOP_BUILD=$DEVELOP_VERSION+'-d'+$COMMIT_DATETIME+'.'+$(git rev-parse --short HEAD)
-          echo "Develop_Build=$DEVELOP_BUILD" >> $env:GITHUB_ENV
+          $NIGHTLY_VERSION=mvn help:evaluate -Dexpression="project.version" -q -DforceStdout
+          echo "Nightly_Build=$NIGHTLY_VERSION" >> $env:GITHUB_ENV
 
-      - name: Build with Maven - ${{ env.Develop_Build }}
+      - name: Build with Maven - ${{ env.Nightly_Build }}
         run: |
-          echo "Version will be ${{ env.Develop_Build }}"
-          mvn versions:set -DnewVersion="${{ env.Develop_Build }}"
+          echo "Version will be ${{ env.Nightly_Build }}"
           mvn --batch-mode clean install
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v1
 
       # Required for Bridge to build *.exe installer
       - name: Install NSIS if not cached
@@ -148,21 +153,21 @@ jobs:
       # Create Dispatcher. Copy zip and exe files.  Rename *.exe file. - develop branch
       #      - name: Create Bridge installer
       #        run: |
-      #          & 'C:\Program Files (x86)\NSIS\makensis.exe' /DMIM_FILENAME="D:\a\pk-bridge\pk-bridge\bridge-build\bridge.zip" /DVERSION_NUMBER="${{ env.Develop_Build }}" /DPRODUCT_VERSION="${{ env.Develop_Build }}" "D:\a\pk-bridge\pk-bridge\installer\bridge\bridge.nsi"
+      #          & 'C:\Program Files (x86)\NSIS\makensis.exe' /DMIM_FILENAME="D:\a\pk-bridge\pk-bridge\bridge-build\bridge.zip" /DVERSION_NUMBER="${{ env.Nightly_Build }}" /DPRODUCT_VERSION="${{ env.Nightly_Build }}" "D:\a\pk-bridge\pk-bridge\installer\bridge\bridge.nsi"
 
       #      - name: Copy and Upload Bridge zip, exe, and setupexe via Maven
       #        run: |
       #          mkdir staging
       #          copy "D:/a/pk-bridge/pk-bridge/bridge-build/*.zip" staging
       #          copy "D:/a/pk-bridge/pk-bridge/installer/bridge/*.exe" staging
-      #          copy "D:\a\pk-bridge\pk-bridge\installer\bridge\bridgesetup-${{ env.Develop_Build }}.exe" "D:\a\pk-bridge\pk-bridge\staging\bridge.exe"
-      #          ./mvnw --batch-mode -f "uploadzip.xml" clean deploy -Drevision="${{ env.Develop_Build }}" -s .mvn/wrapper/settings.xml
-      #          ./mvnw --batch-mode -f "uploadexe.xml" clean deploy -Drevision="${{ env.Develop_Build }}" -s .mvn/wrapper/settings.xml
-      #          ./mvnw --batch-mode -f "uploadsetupexe.xml" clean deploy -Drevision="${{ env.Develop_Build }}" -s .mvn/wrapper/settings.xml
+      #          copy "D:\a\pk-bridge\pk-bridge\installer\bridge\bridgesetup-${{ env.Nightly_Build }}.exe" "D:\a\pk-bridge\pk-bridge\staging\bridge.exe"
+      #          ./mvnw --batch-mode -f "uploadzip.xml" clean deploy -Drevision="${{ env.Nightly_Build }}" -s .mvn/wrapper/settings.xml
+      #          ./mvnw --batch-mode -f "uploadexe.xml" clean deploy -Drevision="${{ env.Nightly_Build }}" -s .mvn/wrapper/settings.xml
+      #          ./mvnw --batch-mode -f "uploadsetupexe.xml" clean deploy -Drevision="${{ env.Nightly_Build }}" -s .mvn/wrapper/settings.xml
 
       # This will find no files under a PUSH request.  This is normal and expected.  It should only WARN.
       #      - name: Upload Bridge artifacts to GitHub
       #        uses: actions/upload-artifact@v2
       #        with:
-      #          name: Bridge-${{ env.Develop_Build }}_Package
+      #          name: Bridge-${{ env.Nightly_Build }}_Package
       #          path: staging
