@@ -3,6 +3,18 @@
 
 name: Create Release from Develop
 
+# Purpose: This will create a release branch using the latest code from Develop.
+#          It will also bump the project.version of Develop's pom.xml by 1 minor version via Pull Request.
+# Steps:
+# 1. Checkout Master.
+# 2. Get the current project.version from the pom.xml in Develop.
+# 3. Create a release branch using the version number from the pom.
+# 4. Create a release build using this code.  Release builds are tagged with -r
+# 5. Increment the pom version by 1 minor version.  Reset Patch version to 0.  Change Qualifier to -SNAPSHOT.
+# 6. Create a feature branch to bump Develop's version.
+# 7. Set the project.version and commit the pom.xml change to the feature branch.
+# 8. Create a pull request to bump the version number.
+
 on: workflow_dispatch
 
 jobs:
@@ -26,6 +38,7 @@ jobs:
       - name: Clone the source code
         uses: actions/checkout@v2
         with:
+          token: ${{ secrets.JW_TOKEN }}
           fetch-depth: 0
 
       - name: Set up JDK ${{ matrix.jdk }}
@@ -132,3 +145,36 @@ jobs:
       #          ./mvnw --batch-mode -f "uploadzip.xml" clean deploy -Drevision="${{ env.Release_Build }}" -s .mvn/wrapper/settings.xml
       #          ./mvnw --batch-mode -f "uploadexe.xml" clean deploy -Drevision="${{ env.Release_Build }}" -s .mvn/wrapper/settings.xml
       #          ./mvnw --batch-mode -f "uploadsetupexe.xml" clean deploy -Drevision="${{ env.Release_Build }}" -s .mvn/wrapper/settings.xml
+
+      - name: Calculate next Develop version
+        run: |
+          $CURRENT=mvn help:evaluate -Dexpression=project.version -q -DforceStdout
+          $MAJOR=mvn build-helper:parse-version -Dversion.version=$CURRENT help:evaluate -Dexpression=parsedVersion.majorVersion -q -DforceStdout`
+          $MINOR=mvn build-helper:parse-version -Dversion.version=$CURRENT help:evaluate -Dexpression=parsedVersion.nextMinorVersion -q -DforceStdout`
+          $NEXT_VERSION=$MAJOR+'.'+$MINOR+'.0-SNAPSHOT'
+          echo "Current version is $CURRENT"
+          echo "Develop will be bumped to $NEXT_VERSION"
+          echo "nextVersion=$NEXT_VERSION" >> $env:GITHUB_ENV
+
+      - name: Create bump Feature Branch from Master
+        run: |
+          git switch develop
+          git checkout -b feature/${{ env.nextVersion }}
+
+      - name: Bump Develop version to ${{ env.nextVersion }}
+        run: |
+          mvn versions:set -DnewVersion=${{ env.nextVersion }} versions:commit
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git commit -m "POM Develop bumped to ${{ env.nextVersion }}"
+          git push --set-upstream origin feature/${{ env.nextVersion }}
+
+      # See: https://cli.github.com/manual/
+      - name: Create pull request to Bump version in Develop
+        run: >
+          gh pr create
+          --base develop
+          --head feature/${{ env.nextVersion }}
+          --title "Bump Develop to ${{ env.nextVersion }}"
+          --body "Merge all possible changes from Release branch.  Also bump the Develop branch version to ${{ env.nextVersion }}.  This is an automated Pull Request created by GitHub action."
