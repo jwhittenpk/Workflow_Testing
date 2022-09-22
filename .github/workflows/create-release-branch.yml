@@ -149,8 +149,8 @@ jobs:
       - name: Calculate next Develop version
         run: |
           $CURRENT=mvn help:evaluate -Dexpression=project.version -q -DforceStdout
-          $MAJOR=mvn build-helper:parse-version -Dversion.version=$CURRENT help:evaluate -Dexpression=parsedVersion.majorVersion -q -DforceStdout`
-          $MINOR=mvn build-helper:parse-version -Dversion.version=$CURRENT help:evaluate -Dexpression=parsedVersion.nextMinorVersion -q -DforceStdout`
+          $MAJOR=mvn build-helper:parse-version -D"version.version"=$CURRENT help:evaluate -Dexpression=parsedVersion.majorVersion -q -DforceStdout
+          $MINOR=mvn build-helper:parse-version -D"version.version"=$CURRENT help:evaluate -Dexpression=parsedVersion.nextMinorVersion -q -DforceStdout
           $NEXT_VERSION=$MAJOR+'.'+$MINOR+'.0-SNAPSHOT'
           echo "Current version is $CURRENT"
           echo "Develop will be bumped to $NEXT_VERSION"
