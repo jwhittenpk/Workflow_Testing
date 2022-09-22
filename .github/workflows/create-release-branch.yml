@@ -163,7 +163,7 @@ jobs:
 
       - name: Bump Develop version to ${{ env.nextVersion }}
         run: |
-          mvn versions:set -DnewVersion=${{ env.nextVersion }} versions:commit
+          mvn versions:set -DnewVersion="${{ env.nextVersion }}" versions:commit
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add .
