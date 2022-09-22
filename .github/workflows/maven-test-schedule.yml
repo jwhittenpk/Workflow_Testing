@@ -45,10 +45,10 @@ jobs:
           restore-keys: |
             maven-${{ matrix.os }}-
 
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v1
-      with:
-        languages: java
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v1
+        with:
+          languages: java
 
       - name: update API version
         run: |
