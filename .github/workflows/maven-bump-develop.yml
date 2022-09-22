@@ -36,6 +36,8 @@ jobs:
         shell: bash
 
     steps:
+      # Adding with:token here allows this workflow to call maven-feature-build when the feature/1.#.0-SNAPSHOT branch is created
+      # This allows the Pull Request to merge the POM version number bump commit into Develop
       - name: Checkout Master
         uses: actions/checkout@v3
         with:
@@ -54,12 +56,6 @@ jobs:
           key: maven-${{ matrix.os }}-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             maven-${{ matrix.os }}-
-
-      - name: Debug references
-        run: |
-          echo ${{ github.base_ref }}
-          echo ${{ github.head_ref }}
-          echo ${{ github.ref_name }}
 
       - name: Calculate next version
         run: |
