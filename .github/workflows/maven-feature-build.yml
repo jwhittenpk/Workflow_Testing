@@ -31,7 +31,7 @@ jobs:
       jira_name: ${{ steps.string.outputs.lowercase }}
 
   Build_bridge:
-    if: ${{ !contains(needs.validate_name.outputs.lowercase, '.0-SNAPSHOT') }}
+    if: ${{ contains(needs.validate_name.outputs.lowercase, '.0-SNAPSHOT') }}
     needs: validate_name
     runs-on: windows-latest
 
