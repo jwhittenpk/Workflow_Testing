@@ -47,7 +47,7 @@ jobs:
     steps:
       - name: Check Feature Branch Name
         if: ${{ !contains(needs.validate_name.outputs.lowercase, '.0-SNAPSHOT') }}
-        run: exit 1
+        run: exit 0
 
       - name: Clone the source code
         uses: actions/checkout@v2
