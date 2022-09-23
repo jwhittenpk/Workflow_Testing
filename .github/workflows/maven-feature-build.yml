@@ -45,6 +45,10 @@ jobs:
         shell: pwsh
 
     steps:
+      - name: Check Feature Branch Name
+        if: ${{ !contains(needs.validate_name.outputs.lowercase, '.0-SNAPSHOT') }}
+        run: exit 1
+
       - name: Clone the source code
         uses: actions/checkout@v2
         with:
@@ -154,3 +158,7 @@ jobs:
 #        with:
 #          name: Bridge-${{ env.Feature_Build }}_Package
 #          path: staging
+
+      - name: Change status to Success on POM Update
+        if: ${{ !contains(needs.validate_name.outputs.lowercase, '.0-SNAPSHOT') && failure() }}
+        run: exit 0
