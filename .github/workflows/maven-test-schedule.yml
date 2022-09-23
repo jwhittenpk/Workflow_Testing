@@ -5,8 +5,6 @@ name: Test Auto-Update Dependencies for Develop
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0,10,20,30,40,50 9-17 * * 1-5'
 
 jobs:
   Nightly_Bridge_Build:
