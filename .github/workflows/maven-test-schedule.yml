@@ -5,40 +5,9 @@ name: Test Auto-Update Dependencies for Develop
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0,10,20,30,40,50 9-17 * * 1-5'
 
 jobs:
-  # This job checks the last commit in Develop's timestamp.  If greater than 24 hours old, this will fail.
-  # This is to prevent unnecessary duplicate nightly builds.
-  Check_Last_Commit_Date:
-    runs-on: ubuntu-latest
-    name: Check latest commit
-    outputs:
-      should_run: ${{ steps.result.outputs.should_run }}
-    steps:
-      - uses: actions/checkout@v2
-      - name: Print latest_commit
-        run: echo ${{ github.sha }}
-
-      - name: Check latest commit is less than a day
-        continue-on-error: true
-        if: ${{ github.event_name == 'schedule' }}
-        # run: test -z $(git rev-list  --after="24 hours"  ${{ github.sha }}) && echo "::set-output name=should_run::false"
-        run: test -z $(git rev-list --after="10 minutes" ${{ github.sha }}) && echo "should_run=false" || echo "should_run=true" >> $GITHUB_ENV
-
-      - name: Manually triggered build, always run
-        if: ${{ github.event_name != 'schedule' }}
-        run: echo "should_run=true" >> $GITHUB_ENV
-
-      - name: Print result
-        id: result
-        run: echo "::set-output name=should_run::${{ env.should_run }}"
-
   Nightly_Bridge_Build:
-    # Do not run if there has been no commits since last
-    needs: Check_Last_Commit_Date
-    if: ${{ needs.Check_Last_Commit_Date.outputs.should_run == 'true' }}
     runs-on: windows-latest
 
     env:
@@ -74,6 +43,11 @@ jobs:
           restore-keys: |
             maven-${{ matrix.os }}-
 
+#      - name: Initialize CodeQL
+#        uses: github/codeql-action/init@v1
+#        with:
+#          languages: java
+
       - name: update API version
         run: |
           mvn versions:update-properties@update-properties-latest -U
@@ -108,3 +82,24 @@ jobs:
           --head feature/auto-version-${{ github.run_number }}
           --title "$(date +'%m-%d-%Y') - Maven POM auto updates into Develop"
           --body "Created by Scheduled GitHub action"
+
+      # Get the current semantic build tag for the branch
+      - name: Get current build number
+        run: |
+          $NIGHTLY_VERSION=mvn help:evaluate -Dexpression="project.version" -q -DforceStdout
+          echo "Nightly_Build=$NIGHTLY_VERSION" >> $env:GITHUB_ENV
+
+      - name: Build with Maven - ${{ env.Nightly_Build }}
+        run: |
+          echo "Version will be ${{ env.Nightly_Build }}"
+          mvn --batch-mode clean install
+
+#      - name: Perform CodeQL Analysis
+#        uses: github/codeql-action/analyze@v1
+
+      # Required for Bridge to build *.exe installer
+      - name: Install NSIS if not cached
+        if: steps.cache_NSIS.outputs.cache-hit != 'true'
+        run: |
+          [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+          choco install nsis.install --version=2.46 -y -dv
