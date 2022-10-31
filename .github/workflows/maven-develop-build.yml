@@ -84,9 +84,9 @@ jobs:
       - name: Get current build number
         id: get-current-version
         run: |
-          $MAJOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
-          $MINOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
-          $PATCH=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.incrementalVersion" -q -DforceStdout
+          $MAJOR=mvn build-helper:parse-version -D"version.version"=${{ env.version }} help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
+          $MINOR=mvn build-helper:parse-version -D"version.version"=${{ env.version }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
+          $PATCH=mvn build-helper:parse-version -D"version.version"=${{ env.version }} help:evaluate -Dexpression="parsedVersion.incrementalVersion" -q -DforceStdout
           $DEVELOP_VERSION=$MAJOR+'.'+$MINOR+'.'+$PATCH
           $DEVELOP_BUILD=$DEVELOP_VERSION + $(
               if ( $${{ github.event.pull_request.merged == true && github.base_ref == 'develop' && startsWith(github.head_ref, 'feature/') }} ) {
