@@ -1,0 +1,146 @@
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: Nightly Build for Develop
+
+on:
+  schedule:
+    - cron: '50 0 * * 1-5'
+
+jobs:
+  Nightly_Bridge_Build:
+    runs-on: windows-latest
+
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['windows']
+        jdk: [ '1.8' ]
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Clone the source code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK ${{ matrix.jdk }}
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.jdk }}
+
+      - name: Set up cache for ~./m2/repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: maven-${{ matrix.os }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-${{ matrix.os }}-
+
+      - name: Set up cache for NSIS v2.46
+        id: cache_NSIS
+        uses: actions/cache@v2
+        with:
+          path: C:\Program Files (x86)\NSIS
+          key: ${{ matrix.os }}-nsis
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v1
+        with:
+          languages: java
+
+      - name: update API version
+        run: |
+          mvn versions:update-properties@update-properties-latest -U
+          $POM_CHANGED=git status --porcelain
+          echo "update-properties completed-------------------"
+          if ( $POM_CHANGED -like '*pom.xml*' )
+          {
+            echo "code_changed=$POM_CHANGED" >> $env:GITHUB_ENV            
+          }
+
+      - name: Create Auto-Version Branch from Develop
+        if: ${{ env.code_changed }}
+        run: |
+          git switch develop
+          git checkout -b feature/auto-version-${{ github.run_number }}
+          git push --set-upstream origin feature/auto-version-${{ github.run_number }}
+
+      - name: Commit POM changes
+        if: ${{ env.code_changed }}
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add ./pom.xml
+          git commit -m 'POM versions changed'
+          git pull
+          git push
+
+      # See: https://cli.github.com/manual/
+      - name: Create pull request for Auto-Version into Develop
+        if: ${{ env.code_changed }}
+        run: >
+          gh pr create
+          --base develop
+          --head feature/auto-version-${{ github.run_number }}
+          --title "$(date +'%m-%d-%Y') - Maven POM auto updates into Develop"
+          --body "Created by Scheduled GitHub action"
+
+      # Get the current semantic build tag for the branch
+      - name: Get current build number
+        run: |
+          $NIGHTLY_VERSION=mvn help:evaluate -Dexpression="project.version" -q -DforceStdout
+          echo "Nightly_Build=$NIGHTLY_VERSION" >> $env:GITHUB_ENV
+
+      - name: Build with Maven - ${{ env.Nightly_Build }}
+        run: |
+          echo "Version will be ${{ env.Nightly_Build }}"
+          mvn --batch-mode clean install
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v1
+
+      # Required for Bridge to build *.exe installer
+      - name: Install NSIS if not cached
+        if: steps.cache_NSIS.outputs.cache-hit != 'true'
+        run: |
+          [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+          choco install nsis.install --version=2.46 -y -dv
+
+      # This step overwrites parts of the NSIS program with PK specific code.  I don't know what exactly.
+      #      - name: Extract NSIS log if not cached
+      #        if: steps.cache_NSIS.outputs.cache-hit != 'true'
+      #        run: |
+      #          echo "$(pwd)"
+      #          7z.exe x "D:\a\pk-bridge\pk-bridge\bridge-build\nsis-2.46-log.zip" -o"C:\Program Files (x86)\NSIS" -y -r
+      #          cd "D:\a\pk-bridge\pk-bridge"
+      #          echo "$(pwd)"
+      #          dir
+
+      # Create Dispatcher. Copy zip and exe files.  Rename *.exe file. - develop branch
+      #      - name: Create Bridge installer
+      #        run: |
+      #          & 'C:\Program Files (x86)\NSIS\makensis.exe' /DMIM_FILENAME="D:\a\pk-bridge\pk-bridge\bridge-build\bridge.zip" /DVERSION_NUMBER="${{ env.Nightly_Build }}" /DPRODUCT_VERSION="${{ env.Nightly_Build }}" "D:\a\pk-bridge\pk-bridge\installer\bridge\bridge.nsi"
+
+      #      - name: Copy and Upload Bridge zip, exe, and setupexe via Maven
+      #        run: |
+      #          mkdir staging
+      #          copy "D:/a/pk-bridge/pk-bridge/bridge-build/*.zip" staging
+      #          copy "D:/a/pk-bridge/pk-bridge/installer/bridge/*.exe" staging
+      #          copy "D:\a\pk-bridge\pk-bridge\installer\bridge\bridgesetup-${{ env.Nightly_Build }}.exe" "D:\a\pk-bridge\pk-bridge\staging\bridge.exe"
+      #          ./mvnw --batch-mode -f "uploadzip.xml" clean deploy -Drevision="${{ env.Nightly_Build }}" -s .mvn/wrapper/settings.xml
+      #          ./mvnw --batch-mode -f "uploadexe.xml" clean deploy -Drevision="${{ env.Nightly_Build }}" -s .mvn/wrapper/settings.xml
+      #          ./mvnw --batch-mode -f "uploadsetupexe.xml" clean deploy -Drevision="${{ env.Nightly_Build }}" -s .mvn/wrapper/settings.xml
+
+      # This will find no files under a PUSH request.  This is normal and expected.  It should only WARN.
+      #      - name: Upload Bridge artifacts to GitHub
+      #        uses: actions/upload-artifact@v2
+      #        with:
+      #          name: Bridge-${{ env.Nightly_Build }}_Package
+      #          path: staging

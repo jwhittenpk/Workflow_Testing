@@ -1,0 +1,65 @@
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: Maven Build/Deploy (Develop)
+
+# Purpose: This will deploy a Transporter build to GitHub packages when a PUSH is made to DEVELOP.
+#          It will also create a build on a schedule.
+
+# Job:
+#   tests - The purpose of this job is to run integration tests
+
+on:
+  push:
+    branches: [ develop ]
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  JAVA_DISTRIBUTION: 'temurin'
+  JAVA_VERSION: 17
+  JAVA_CACHE: 'maven'
+
+jobs:
+  setup:
+    name: Set up Version information
+    runs-on: ubuntu-latest
+
+    outputs:
+      project_version: ${{ steps.get_project_version.outputs.project_version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: ${{ env.JAVA_CACHE }}
+
+      - name: Extract Maven project version
+        id: get_project_version
+        run: echo "project_version=$( mvn help:evaluate -Dexpression=project.version -q -DforceStdout )" >> $GITHUB_OUTPUT
+
+      - name: Show extracted Maven project version - ${{ steps.get_project_version.outputs.project_version }}
+        run: echo ${{ steps.get_project_version.outputs.project_version }}
+
+  tests:
+    needs: [ setup ]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: ${{ env.JAVA_CACHE }}
+
+      - name: Maven (clean, verify, site)
+        run: mvn clean verify

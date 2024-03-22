@@ -4,11 +4,13 @@
 name: Build for Develop/Support/Hotfix branch
 
 on:
-  push:
-    branches:
-      - develop
-      - support/**
-      - hotfix/**
+# Turning off this action.
+#  push:
+#    branches:
+#      - develop
+#      - support/**
+#      - hotfix/**
+  workflow_dispatch:
 
 jobs:
   validate_name:
@@ -69,25 +71,14 @@ jobs:
         with:
           path: C:\Program Files (x86)\NSIS
           key: ${{ matrix.os }}-nsis
-
-      - name: Print branch names
-        run: |
-          echo "Branch name is: ${{ github.base_ref }}"
-          echo "HEAD branch is: ${{ github.head_ref }}"
-          echo "Ref is: ${{ github.ref }}"
-          echo "Ref name is: ${{ github.ref_name }}"
-
-      - name: Get latest tag
-        run: |
-          $TAG=git describe --tags --abbrev=0
-          echo "version-tag=$TAG" >> $env:GITHUB_ENV
-
+          
       # Get next semantic build tag number
       - name: Get version
         run: |
-          $MAJOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
-          $MINOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
-          $INCREMENT=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.nextIncrementalVersion" -q -DforceStdout
+          $CURRENT_DEVELOP_VERSION=mvn help:evaluate -Dexpression="project.version" -q -DforceStdout
+          $MAJOR=mvn build-helper:parse-version -D"version.version"$CURRENT_DEVELOP_VERSION help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
+          $MINOR=mvn build-helper:parse-version -D"version.version"=$CURRENT_DEVELOP_VERSION help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
+          $INCREMENT=mvn build-helper:parse-version -D"version.version"=$CURRENT_DEVELOP_VERSION help:evaluate -Dexpression="parsedVersion.nextIncrementalVersion" -q -DforceStdout
           $NEXT_SEMANTIC_TAG=$MAJOR+'.'+$MINOR+'.'+$INCREMENT
           echo "version=$NEXT_SEMANTIC_TAG" >> $env:GITHUB_ENV
 
@@ -95,14 +86,14 @@ jobs:
       - name: Get current build number
         id: get-current-version
         run: |
-          $MAJOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
-          $MINOR=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
-          $BUILDNUMBER=mvn build-helper:parse-version -D"version.version"=${{ env.version-tag }} help:evaluate -Dexpression="parsedVersion.incrementalVersion" -q -DforceStdout
-          $CURRENT_VERSION=$MAJOR+'.'+$MINOR+'.'+$BUILDNUMBER
-          $CURRENT_VERSION=$CURRENT_VERSION + $(
-              if ( $${{ github.ref_name == 'develop' }} ) {
+          $MAJOR=mvn build-helper:parse-version -D"version.version"=${{ env.version }} help:evaluate -Dexpression="parsedVersion.majorVersion" -q -DforceStdout
+          $MINOR=mvn build-helper:parse-version -D"version.version"=${{ env.version }} help:evaluate -Dexpression="parsedVersion.minorVersion" -q -DforceStdout
+          $PATCH=mvn build-helper:parse-version -D"version.version"=${{ env.version }} help:evaluate -Dexpression="parsedVersion.incrementalVersion" -q -DforceStdout
+          $DEVELOP_VERSION=$MAJOR+'.'+$MINOR+'.'+$PATCH
+          $DEVELOP_BUILD=$DEVELOP_VERSION + $(
+              if ( $${{ github.event.pull_request.merged == true && github.base_ref == 'develop' && startsWith(github.head_ref, 'feature/') }} ) {
                   "-d${{ github.run_number }}" }
-              elseif ( $${{ startsWith(github.ref_name, 'support/') }} ) {
+              elseif ( $${{ github.event.pull_request.merged == true  && startsWith(github.base_ref, 'support/') && startsWith(github.head_ref, 'feature/') }} ) {
                   "-s${{ github.run_number }}" }
               elseif ( $${{ startsWith(github.ref_name, 'hotfix/') }} ) {
                   "-h${{ github.run_number }}" }
@@ -110,22 +101,14 @@ jobs:
                   exit 1
               }
           )
-          echo "currentVersion=$CURRENT_VERSION" >> $env:GITHUB_ENV
+          echo "Develop_Build=$DEVELOP_BUILD" >> $env:GITHUB_ENV
 
       # Build and tag develop branch with '-d'
-      - name: Build with Maven - ${{ env.currentVersion }}
+      - name: Build with Maven - ${{ env.Develop_Build }}
         run: |
-          echo "Version will be ${{ env.currentVersion }}"
-          mvn versions:set -DnewVersion="${{ env.currentVersion }}"
+          echo "Version will be ${{ env.Develop_Build }}"
+          mvn versions:set -DnewVersion="${{ env.Develop_Build }}"
           mvn --batch-mode clean install
-
-      - name: Tag the code - ${{ env.currentVersion }}
-        id: tag_version_develop
-        uses: mathieudutour/github-tag-action@v5.2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          custom_tag: ${{ env.currentVersion }}
-          tag_prefix: ''
 
       # Required for Bridge to build *.exe installer
       - name: Install NSIS if not cached
@@ -147,21 +130,21 @@ jobs:
       # Create Dispatcher. Copy zip and exe files.  Rename *.exe file. - develop branch
 #      - name: Create Bridge installer
 #        run: |
-#          & 'C:\Program Files (x86)\NSIS\makensis.exe' /DMIM_FILENAME="D:\a\pk-bridge\pk-bridge\bridge-build\bridge.zip" /DVERSION_NUMBER="${{ env.currentVersion }}" /DPRODUCT_VERSION="${{ env.currentVersion }}" "D:\a\pk-bridge\pk-bridge\installer\bridge\bridge.nsi"
+#          & 'C:\Program Files (x86)\NSIS\makensis.exe' /DMIM_FILENAME="D:\a\pk-bridge\pk-bridge\bridge-build\bridge.zip" /DVERSION_NUMBER="${{ env.Develop_Build }}" /DPRODUCT_VERSION="${{ env.Develop_Build }}" "D:\a\pk-bridge\pk-bridge\installer\bridge\bridge.nsi"
 
 #      - name: Copy and Upload Bridge zip, exe, and setupexe via Maven
 #        run: |
 #          mkdir staging
 #          copy "D:/a/pk-bridge/pk-bridge/bridge-build/*.zip" staging
 #          copy "D:/a/pk-bridge/pk-bridge/installer/bridge/*.exe" staging
-#          copy "D:\a\pk-bridge\pk-bridge\installer\bridge\bridgesetup-${{ env.currentVersion }}.exe" "D:\a\pk-bridge\pk-bridge\staging\bridge.exe"
-#          ./mvnw --batch-mode -f "uploadzip.xml" clean deploy -Drevision="${{ env.currentVersion }}" -s .mvn/wrapper/settings.xml
-#          ./mvnw --batch-mode -f "uploadexe.xml" clean deploy -Drevision="${{ env.currentVersion }}" -s .mvn/wrapper/settings.xml
-#          ./mvnw --batch-mode -f "uploadsetupexe.xml" clean deploy -Drevision="${{ env.currentVersion }}" -s .mvn/wrapper/settings.xml
+#          copy "D:\a\pk-bridge\pk-bridge\installer\bridge\bridgesetup-${{ env.Develop_Build }}.exe" "D:\a\pk-bridge\pk-bridge\staging\bridge.exe"
+#          ./mvnw --batch-mode -f "uploadzip.xml" clean deploy -Drevision="${{ env.Develop_Build }}" -s .mvn/wrapper/settings.xml
+#          ./mvnw --batch-mode -f "uploadexe.xml" clean deploy -Drevision="${{ env.Develop_Build }}" -s .mvn/wrapper/settings.xml
+#          ./mvnw --batch-mode -f "uploadsetupexe.xml" clean deploy -Drevision="${{ env.Develop_Build }}" -s .mvn/wrapper/settings.xml
 
       # This will find no files under a PUSH request.  This is normal and expected.  It should only WARN.
 #      - name: Upload Bridge artifacts to GitHub
 #        uses: actions/upload-artifact@v2
 #        with:
-#          name: Bridge-${{ env.currentVersion }}_Package
+#          name: Bridge-${{ env.Develop_Build }}_Package
 #          path: staging
