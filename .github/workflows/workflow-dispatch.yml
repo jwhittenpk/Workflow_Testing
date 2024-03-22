@@ -1,20 +1,53 @@
+name: Release Workflow
+
 on:
   workflow_dispatch:
-    inputs:
-      build_id:
-        required: true
-        type: string
-      deploy_target:
-        required: true
-        type: string
-      perform_deploy:
-        required: true
-        type: boolean
+
+env:
+  GITHUB_ACTOR: ${{ secrets.GITHUB_ACTOR }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  JAVA_DISTRIBUTION: 'temurin'
+  JAVA_VERSION: 17
+  JAVA_CACHE: 'maven'
 
 jobs:
-  deploy:
+  release:
     runs-on: ubuntu-latest
-    if: ${{ inputs.perform_deploy }}
+
     steps:
-      - name: Deploy build to target
-        run: echo "build ${{ inputs.build_id }} --target ${{ inputs.deploy_target }}"
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: ${{ env.JAVA_CACHE }}
+
+      - name: Build and verify
+        run: mvn clean verify
+
+      - name: Remove -SNAPSHOT from version
+        run: |
+          mvn versions:set -DremoveSnapshot=true versions:commit
+          git commit -a -m "Updating version for new release"
+
+      - name: Merge Develop into Master
+        run: |
+          git checkout master
+          git merge --ff-only develop
+
+      - name: Create a Release Tag
+        run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          git tag -a $VERSION -m "v$VERSION"
+
+      - name: Bump version and add -SNAPSHOT back to pom.xml in Develop
+        run: |
+          git checkout develop
+          mvn versions:set -DnextSnapshot=true versions:commit
+          git commit -a -m "Bumping version to next development release"
+
+      - name: Push changes to Develop
+        run: git push --all --follow-tags
