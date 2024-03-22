@@ -5,7 +5,7 @@ on:
 
 env:
   GITHUB_ACTOR: ${{ secrets.GITHUB_ACTOR }}
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.JW_TOKEN }}
   JAVA_DISTRIBUTION: 'temurin'
   JAVA_VERSION: 17
   JAVA_CACHE: 'maven'
