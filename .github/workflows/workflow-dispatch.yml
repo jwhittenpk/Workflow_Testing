@@ -1,4 +1,4 @@
-name: Release Workflow
+name: Cut a Release from Develop
 
 on:
   workflow_dispatch:

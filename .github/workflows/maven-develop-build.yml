@@ -4,11 +4,13 @@
 name: Build for Develop/Support/Hotfix branch
 
 on:
-  push:
-    branches:
-      - develop
-      - support/**
-      - hotfix/**
+# Turning off this action.
+#  push:
+#    branches:
+#      - develop
+#      - support/**
+#      - hotfix/**
+  workflow_dispatch:
 
 jobs:
   validate_name:
