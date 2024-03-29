@@ -1,0 +1,58 @@
+name: Automatic GitHub Action Validation
+
+on:
+#  push:
+#    branches:
+#      - feature/**
+#      - develop
+#    paths:
+#      - .github/**
+  workflow_dispatch:
+
+env:
+  GITHUB_TOKEN: ${{ secrets.ORG_GHTOKEN }}
+
+jobs:
+  yaml_validation:
+    name: Validate GitHub YAML Files using Lint
+    runs-on: ubuntu-latest
+    outputs:
+      job_status: ${{ steps.job_status.outputs.status }}
+    steps:
+      - uses: actions/checkout@v3
+
+      # Use YamlLint to validate .yml files
+      - name: Validate YAML files
+        id: yamllint
+        continue-on-error: true
+        run: yamllint -d relaxed .
+
+  action_validation:
+    needs:
+      - yaml_validation
+      - yamlfix
+    if: ${{ always() && contains(github.event.head_commit.message, '[validate]') }}
+    name: GitHub Actions validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Install action-validator with asdf
+        uses: asdf-vm/actions/install@v2
+        with:
+          tool_versions: |
+            action-validator 0.5.1
+      - name: Validate Actions
+        id: validate_actions
+        continue-on-error: true
+        run: |
+          find .github/workflows -type f \( -iname \*.yaml -o -iname \*.yml \) \
+            | xargs -I {} action-validator --verbose {} > workflow_error_report.txt 2>&1
+      - name: Upload Validation error report
+        if: steps.validate_actions.outcome != 'success'
+        uses: actions/upload-artifact@v3
+        with:
+          name: Validation Error Report
+          path: |-
+            workflow_error_report.txt
