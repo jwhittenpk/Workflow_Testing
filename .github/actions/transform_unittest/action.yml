@@ -1,0 +1,27 @@
+name: Transform Unittest Python Scripts
+description: This action sets up ./mvnw for Maven
+
+inputs:
+  token:
+    description: GitHub token
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout serv-configs repo
+      uses: actions/checkout@v3
+      with:
+        repository: commure/serv-configs
+        token: ${{ inputs.token }}
+        path: ./serv-configs
+
+    - name: Install Python 2.7.x
+      uses: actions/setup-python@v4
+      with:
+        python-version: '2.7.18'
+
+    - name: Run the Transform script tests
+      shell: bash
+      run: |
+        cd src/test/python
+        PYTHONPATH=$(pwd):$(pwd)/../scripts python -m unittest rad_GE_to_epic rad_epic_to_cerner lab_epic_to_cerner lab_cerner_to_epic

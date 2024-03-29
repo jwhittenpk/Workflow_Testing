@@ -1,0 +1,63 @@
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: Composite Action Maven Build/Deploy (Manual)
+
+on: workflow_dispatch
+
+env:
+  JAVA_DISTRIBUTION: 'temurin'
+  JAVA_VERSION: 17
+  JAVA_CACHE: 'maven'
+
+jobs:
+  setup:
+    name: Set up Version information
+    runs-on: ubuntu-latest
+
+    outputs:
+      project_version: ${{ steps.get_project_version.outputs.project_version }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Java JDK and Maven
+        uses: ./.github/actions/setup_mvnw
+
+      - name: Extract Maven project version
+        id: get_project_version
+        run: echo "project_version=$( mvn help:evaluate -Dexpression=project.version -q -DforceStdout )" >> $GITHUB_OUTPUT
+
+      - name: Show extracted Maven project version - ${{ steps.get_project_version.outputs.project_version }}
+        run: echo ${{ steps.get_project_version.outputs.project_version }}
+
+  tests:
+    needs: [ setup ]
+    name: CodeQL and Integration tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ windows-latest, ubuntu-latest ]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Java JDK and Maven
+        uses: ./.github/actions/setup_mvnw
+
+      - name: Maven (clean, verify)
+        run: mvn -Pprerelease clean verify
+
+  package-maven:
+    needs: [ tests ]
+    name: Maven build Deploy
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Java JDK and Maven
+        uses: ./.github/actions/setup_mvnw
+
+      - name: Maven (clean, package, skipTests)
+        run: mvn clean package -DskipTests
